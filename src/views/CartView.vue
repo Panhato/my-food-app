@@ -6,59 +6,53 @@ import { useToastStore } from '../stores/toast';
 import { useRouter } from 'vue-router'; 
 import { supabase } from '../supabase'; 
 
+// 🔥🔥🔥 REPLACE THESE WITH YOUR TELEGRAM KEYS 🔥🔥🔥
+const TELEGRAM_BOT_TOKEN = '8253458210:AAG2bggWcLeBEuhwyW0pTMJf0q_dLic6124'; 
+const TELEGRAM_CHAT_ID = '7309869072';
+
 const cartStore = useCartStore();
 const authStore = useAuthStore();
 const toast = useToastStore();
 const router = useRouter();
 
 // State for Modals
-const showInfoModal = ref(false);    // Modal 1: Customer Info
-const showPaymentModal = ref(false); // Modal 2: QR & Upload
+const showInfoModal = ref(false);    
+const showPaymentModal = ref(false); 
 const showDeleteModal = ref(false);
 const isSubmitting = ref(false);
 const itemToDelete = ref(null);
 const isLoadingLocation = ref(false);
 
-// State for Receipt Upload
 const receiptFile = ref(null);
 const receiptPreview = ref(null);
 
-// State for Customer Info
 const customer = ref({
   name: '',
   phone: '',
   address: ''
 });
 
-// Auto-fill Data
 onMounted(() => {
   if (authStore.user) {
     customer.value.name = authStore.user.username || '';
     customer.value.phone = authStore.user.phone || '';
     customer.value.address = authStore.user.address || '';
   }
-  
-  // Try to get saved location
   const savedLocation = localStorage.getItem('customer_location');
-  if(savedLocation) {
-      customer.value.address = savedLocation;
-  }
+  if(savedLocation) customer.value.address = savedLocation;
 });
 
-// Get GPS Location
 const getLocation = () => {
   if (!navigator.geolocation) {
     alert("Browser របស់អ្នកមិនស្គាល់មុខងារនេះទេ");
     return;
   }
-  
   isLoadingLocation.value = true;
   navigator.geolocation.getCurrentPosition(
     (position) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
-      
       customer.value.address = mapLink;
       isLoadingLocation.value = false;
     },
@@ -69,7 +63,6 @@ const getLocation = () => {
   );
 };
 
-// Handle File Upload
 const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -85,13 +78,64 @@ const formatPrice = (value) => {
   return '$' + val.toFixed(2);
 };
 
-// Step 1: Open Info Modal
+// 🔥 Function: Send Notification to Telegram
+const sendTelegramNotification = async (orderData, receiptUrl) => {
+    // 1. Format the message
+    const itemsList = orderData.items.map(i => `- ${i.title} (x${i.quantity})`).join('\n');
+    const total = formatPrice(orderData.total_price);
+    const slipStatus = receiptUrl ? "✅ បានភ្ជាប់វិក្កយបត្រ" : "💵 បង់លុយផ្ទាល់";
+    
+    const message = `
+📣 <b>ការកុម្ម៉ង់ថ្មី! (New Order)</b>
+--------------------------------
+👤 <b>អតិថិជន:</b> ${orderData.customer_name}
+📞 <b>ទូរស័ព្ទ:</b> ${orderData.phone}
+📍 <b>ទីតាំង:</b> ${orderData.address}
+
+🛒 <b>មុខម្ហូប:</b>
+${itemsList}
+
+💰 <b>សរុប: ${total}</b>
+💳 <b>ការបង់ប្រាក់:</b> ${slipStatus}
+--------------------------------
+🔗 <a href="${receiptUrl || '#'}">មើលរូបវិក្កយបត្រ</a>
+    `;
+
+    try {
+        // 2. Send Text Message
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
+        
+        // 3. Send Photo (if receipt exists)
+        if (receiptUrl) {
+             await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: TELEGRAM_CHAT_ID,
+                    photo: receiptUrl,
+                    caption: `វិក្កយបត្រពី ${orderData.customer_name}`
+                })
+            });
+        }
+
+    } catch (error) {
+        console.error("Telegram Error:", error);
+    }
+};
+
 const openCheckout = () => {
   if (cartStore.items.length === 0) { 
       toast.show('កន្ត្រករបស់អ្នកទទេ!', 'error'); 
       return; 
   }
-  // Update data again
   if (authStore.user) {
     if(!customer.value.name) customer.value.name = authStore.user.username;
     if(!customer.value.phone) customer.value.phone = authStore.user.phone;
@@ -99,7 +143,6 @@ const openCheckout = () => {
   showInfoModal.value = true;
 };
 
-// Step 2: Validate & Show Payment Modal
 const proceedToPayment = () => {
   if (!customer.value.name || !customer.value.phone || !customer.value.address) {
       toast.show("សូមបំពេញ ឈ្មោះ, លេខទូរស័ព្ទ និងទីតាំង!", "error");
@@ -109,9 +152,7 @@ const proceedToPayment = () => {
   showPaymentModal.value = true; 
 };
 
-// Step 3: Submit Order with Receipt
 const submitOrder = async () => {
-  // Check if receipt is uploaded (Optional check)
   if (!receiptFile.value) {
       if(!confirm("អ្នកមិនទាន់បានដាក់រូបវិក្កយបត្រទេ។ តើអ្នកចង់បន្តទេ?")) return;
   }
@@ -121,7 +162,7 @@ const submitOrder = async () => {
   try {
       let receiptUrl = null;
 
-      // 1. Upload Receipt Image if exists
+      // 1. Upload Slip
       if (receiptFile.value) {
           const fileExt = receiptFile.value.name.split('.').pop();
           const fileName = `receipt_${Date.now()}.${fileExt}`;
@@ -132,34 +173,35 @@ const submitOrder = async () => {
 
           if (uploadError) throw uploadError;
 
-          // Get Public URL
           const { data } = supabase.storage.from('images').getPublicUrl(fileName);
           receiptUrl = data.publicUrl;
       }
 
-      // 2. Insert Order to Database
-      const { error } = await supabase
-        .from('orders') 
-        .insert({
+      // 2. Prepare Data
+      const orderData = {
             customer_name: customer.value.name,
             phone: customer.value.phone,
             address: customer.value.address,
             items: cartStore.items, 
             total_price: cartStore.totalAmount || cartStore.totalPrice,
             status: 'pending',
-            receipt_url: receiptUrl // 🔥 Save URL here
-        });
+            receipt_url: receiptUrl 
+      };
+
+      // 3. Save to Supabase
+      const { error } = await supabase.from('orders').insert(orderData);
 
       if (error) throw error; 
 
+      // 4. 🔥 Send Notification to Telegram
+      // We don't await this to fail the order, just log errors if any
+      sendTelegramNotification(orderData, receiptUrl);
+
+      // 5. Success & Cleanup
       toast.show('ការកុម្ម៉ង់បានជោគជ័យ! ✅', 'success');
       
-      // Clear Cart
-      if (cartStore.clearCart) {
-          cartStore.clearCart(); 
-      } else {
-          cartStore.items = [];
-      }
+      if (cartStore.clearCart) cartStore.clearCart(); 
+      else cartStore.items = [];
       
       localStorage.removeItem('customer_location');
       customer.value = { name: '', phone: '', address: '' };
@@ -177,12 +219,10 @@ const submitOrder = async () => {
   }
 };
 
-// Delete Functionality
 const initiateDelete = (itemId) => {
   itemToDelete.value = itemId;
   showDeleteModal.value = true;
 };
-
 const confirmDelete = () => {
   if (itemToDelete.value) {
     cartStore.removeFromCart(itemToDelete.value);
@@ -214,10 +254,7 @@ const confirmDelete = () => {
         </div>
         <div class="flex items-center gap-4">
           <span class="font-bold text-orange-600 text-lg">{{ formatPrice(item.price * item.quantity) }}</span>
-          
-          <button @click="initiateDelete(item.id)" class="text-gray-400 hover:text-red-500 p-2 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-          </button>
+          <button @click="initiateDelete(item.id)" class="text-gray-400 hover:text-red-500 p-2 transition-colors">🗑️</button>
         </div>
       </div>
 
@@ -238,32 +275,22 @@ const confirmDelete = () => {
     <Transition name="fade">
       <div v-if="showInfoModal" class="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative">
-          
           <h3 class="text-xl font-black text-slate-800 mb-2 text-center">ព័ត៌មានដឹកជញ្ជូន 🛵</h3>
-          
           <div class="space-y-3 mt-4">
              <input v-model="customer.name" placeholder="ឈ្មោះរបស់អ្នក" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 font-bold outline-none focus:border-orange-500" />
              <input v-model="customer.phone" type="tel" placeholder="លេខទូរស័ព្ទ (012...)" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 font-bold outline-none focus:border-orange-500" />
-             
              <div class="space-y-2">
                  <textarea v-model="customer.address" rows="2" placeholder="ទីតាំងដឹកជញ្ជូន..." class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 font-medium outline-none focus:border-orange-500"></textarea>
-                 
-                 <button 
-                    @click="getLocation" 
-                    class="w-full py-2 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm border border-blue-100 hover:bg-blue-100 flex items-center justify-center gap-2" 
-                    :disabled="isLoadingLocation"
-                 >
+                 <button @click="getLocation" class="w-full py-2 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm hover:bg-blue-100 flex items-center justify-center gap-2" :disabled="isLoadingLocation">
                      <span v-if="isLoadingLocation" class="animate-spin">⏳</span>
-                     <span v-else>🎯 យកទីតាំងបច្ចុប្បន្ន (GPS)</span>
+                     <span v-else>📍 យកទីតាំងបច្ចុប្បន្ន (GPS)</span>
                  </button>
              </div>
           </div>
-
           <div class="flex gap-3 mt-6">
             <button @click="showInfoModal = false" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">បោះបង់</button>
             <button @click="proceedToPayment" class="flex-1 py-3 rounded-xl font-bold text-white bg-orange-600 shadow-lg hover:bg-orange-700">បន្តទៅបង់ប្រាក់</button>
           </div>
-
         </div>
       </div>
     </Transition>
@@ -306,28 +333,15 @@ const confirmDelete = () => {
     <Transition name="fade">
       <div v-if="showDeleteModal" class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl text-center">
-            
-            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                </svg>
-            </div>
-
+            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">🗑️</div>
             <h3 class="text-xl font-black text-gray-800 mb-2">លុបមុខម្ហូប?</h3>
-            <p class="text-gray-500 text-sm mb-6">តើអ្នកពិតជាចង់លុបមុខម្ហូបនេះចេញពីកន្ត្រកមែនទេ?</p>
-
-            <div class="flex gap-3">
-                <button @click="showDeleteModal = false" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-500 font-bold hover:bg-gray-200 transition-colors">
-                    រក្សាទុក
-                </button>
-                <button @click="confirmDelete" class="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 shadow-lg shadow-red-200 transition-colors">
-                    លុបចេញ
-                </button>
+            <div class="flex gap-3 mt-6">
+                <button @click="showDeleteModal = false" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-500 font-bold">រក្សាទុក</button>
+                <button @click="confirmDelete" class="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold shadow-lg">លុបចេញ</button>
             </div>
         </div>
       </div>
     </Transition>
-
   </div>
 </template>
 
