@@ -13,11 +13,15 @@ const router = useRouter();
 
 // State for Modals
 const showInfoModal = ref(false);    // Modal 1: Customer Info
-const showPaymentModal = ref(false); // Modal 2: QR Code
+const showPaymentModal = ref(false); // Modal 2: QR & Upload
 const showDeleteModal = ref(false);
 const isSubmitting = ref(false);
 const itemToDelete = ref(null);
 const isLoadingLocation = ref(false);
+
+// State for Receipt Upload
+const receiptFile = ref(null);
+const receiptPreview = ref(null);
 
 // State for Customer Info
 const customer = ref({
@@ -65,6 +69,15 @@ const getLocation = () => {
   );
 };
 
+// Handle File Upload
+const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        receiptFile.value = file;
+        receiptPreview.value = URL.createObjectURL(file);
+    }
+};
+
 const formatPrice = (value) => {
   let val = parseFloat(value);
   if (!val && val !== 0) return '$0.00';
@@ -86,21 +99,45 @@ const openCheckout = () => {
   showInfoModal.value = true;
 };
 
-// Step 2: Validate & Show QR
+// Step 2: Validate & Show Payment Modal
 const proceedToPayment = () => {
   if (!customer.value.name || !customer.value.phone || !customer.value.address) {
       toast.show("សូមបំពេញ ឈ្មោះ, លេខទូរស័ព្ទ និងទីតាំង!", "error");
       return;
   }
   showInfoModal.value = false;
-  showPaymentModal.value = true; // Show QR Code
+  showPaymentModal.value = true; 
 };
 
-// Step 3: Submit Order to Supabase
+// Step 3: Submit Order with Receipt
 const submitOrder = async () => {
+  // Check if receipt is uploaded (Optional check)
+  if (!receiptFile.value) {
+      if(!confirm("អ្នកមិនទាន់បានដាក់រូបវិក្កយបត្រទេ។ តើអ្នកចង់បន្តទេ?")) return;
+  }
+
   isSubmitting.value = true;
 
   try {
+      let receiptUrl = null;
+
+      // 1. Upload Receipt Image if exists
+      if (receiptFile.value) {
+          const fileExt = receiptFile.value.name.split('.').pop();
+          const fileName = `receipt_${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+              .from('images')
+              .upload(fileName, receiptFile.value);
+
+          if (uploadError) throw uploadError;
+
+          // Get Public URL
+          const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+          receiptUrl = data.publicUrl;
+      }
+
+      // 2. Insert Order to Database
       const { error } = await supabase
         .from('orders') 
         .insert({
@@ -109,7 +146,8 @@ const submitOrder = async () => {
             address: customer.value.address,
             items: cartStore.items, 
             total_price: cartStore.totalAmount || cartStore.totalPrice,
-            status: 'pending'
+            status: 'pending',
+            receipt_url: receiptUrl // 🔥 Save URL here
         });
 
       if (error) throw error; 
@@ -125,13 +163,15 @@ const submitOrder = async () => {
       
       localStorage.removeItem('customer_location');
       customer.value = { name: '', phone: '', address: '' };
+      receiptFile.value = null;
+      receiptPreview.value = null;
       showPaymentModal.value = false;
       
       router.push('/receipt');
 
   } catch (err) {
       console.error('Supabase Error:', err);
-      toast.show('មានបញ្ហាពេលកុម្ម៉ង់: ' + err.message, 'error');
+      toast.show('មានបញ្ហា: ' + err.message, 'error');
   } finally {
       isSubmitting.value = false;
   }
@@ -189,7 +229,7 @@ const confirmDelete = () => {
           </div>
           <button @click="openCheckout" class="w-full sm:w-auto bg-orange-600 text-white px-10 py-4 rounded-xl font-bold shadow-lg hover:bg-orange-700 hover:scale-105 transition-all flex justify-center items-center gap-3 text-lg">
             <span>កម្ម៉ង់ឥឡូវ</span>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+            <span>➡️</span>
           </button>
         </div>
       </div>
@@ -230,16 +270,26 @@ const confirmDelete = () => {
 
     <Transition name="fade">
       <div v-if="showPaymentModal" class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl text-center relative">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl text-center relative overflow-y-auto max-h-[90vh]">
           
           <h3 class="text-xl font-black text-slate-800 mb-2">ស្កេនដើម្បីបង់ប្រាក់ 💸</h3>
           <p class="text-gray-500 text-sm mb-4">សរុប: <span class="text-orange-600 font-bold text-lg">{{ formatPrice(cartStore.totalAmount || cartStore.totalPrice) }}</span></p>
           
-          <div class="bg-white p-2 rounded-2xl border-2 border-dashed border-gray-300 mb-6 inline-block">
-             <img src="/qr.jpg" class="w-48 h-48 object-contain rounded-lg" alt="QR Payment" />
+          <div class="bg-white p-2 rounded-2xl border-2 border-dashed border-gray-300 mb-4 inline-block">
+             <img src="/qr.jpg" class="w-40 h-40 object-contain rounded-lg" alt="QR Payment" />
           </div>
 
-          <p class="text-xs text-gray-400 mb-6">សូមស្កេន និងបង់ប្រាក់ រួចចុចប៊ូតុងខាងក្រោម</p>
+          <div class="mb-6 text-left">
+              <label class="text-xs font-bold text-gray-500 ml-2 mb-1 block">បញ្ជាក់ការបង់ប្រាក់ (Upload Slip)</label>
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-50 relative bg-slate-50">
+                  <input type="file" accept="image/*" @change="handleFileUpload" class="absolute inset-0 opacity-0 cursor-pointer" />
+                  <div v-if="!receiptPreview" class="text-gray-400 text-sm flex flex-col items-center gap-1">
+                      <span>📸</span>
+                      <span>ចុចទីនេះដើម្បីដាក់រូប</span>
+                  </div>
+                  <img v-else :src="receiptPreview" class="h-24 mx-auto object-contain rounded-lg shadow-sm" />
+              </div>
+          </div>
 
           <div class="flex gap-3">
             <button @click="showPaymentModal = false" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">ថយក្រោយ</button>
