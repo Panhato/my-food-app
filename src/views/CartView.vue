@@ -12,11 +12,12 @@ const toast = useToastStore();
 const router = useRouter();
 
 // State for Modals
-const showCheckoutModal = ref(false);
+const showInfoModal = ref(false);    // Modal 1: Customer Info
+const showPaymentModal = ref(false); // Modal 2: QR Code
 const showDeleteModal = ref(false);
 const isSubmitting = ref(false);
 const itemToDelete = ref(null);
-const isLoadingLocation = ref(false); // 🔥 State for location loading
+const isLoadingLocation = ref(false);
 
 // State for Customer Info
 const customer = ref({
@@ -25,7 +26,7 @@ const customer = ref({
   address: ''
 });
 
-// 🔥 Auto-fill: Retrieve data from Profile or LocalStorage
+// Auto-fill Data
 onMounted(() => {
   if (authStore.user) {
     customer.value.name = authStore.user.username || '';
@@ -33,14 +34,14 @@ onMounted(() => {
     customer.value.address = authStore.user.address || '';
   }
   
-  // Try to get saved location from Menu page if available
+  // Try to get saved location
   const savedLocation = localStorage.getItem('customer_location');
   if(savedLocation) {
       customer.value.address = savedLocation;
   }
 });
 
-// 🔥 Function to Get Current Location
+// Get GPS Location
 const getLocation = () => {
   if (!navigator.geolocation) {
     alert("Browser របស់អ្នកមិនស្គាល់មុខងារនេះទេ");
@@ -52,7 +53,6 @@ const getLocation = () => {
     (position) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
-      // Create Google Maps Link
       const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
       
       customer.value.address = mapLink;
@@ -72,18 +72,69 @@ const formatPrice = (value) => {
   return '$' + val.toFixed(2);
 };
 
-// Open Checkout Modal
-const checkout = () => {
+// Step 1: Open Info Modal
+const openCheckout = () => {
   if (cartStore.items.length === 0) { 
       toast.show('កន្ត្រករបស់អ្នកទទេ!', 'error'); 
       return; 
   }
-  // Update data again in case profile was just updated
+  // Update data again
   if (authStore.user) {
     if(!customer.value.name) customer.value.name = authStore.user.username;
     if(!customer.value.phone) customer.value.phone = authStore.user.phone;
   }
-  showCheckoutModal.value = true;
+  showInfoModal.value = true;
+};
+
+// Step 2: Validate & Show QR
+const proceedToPayment = () => {
+  if (!customer.value.name || !customer.value.phone || !customer.value.address) {
+      toast.show("សូមបំពេញ ឈ្មោះ, លេខទូរស័ព្ទ និងទីតាំង!", "error");
+      return;
+  }
+  showInfoModal.value = false;
+  showPaymentModal.value = true; // Show QR Code
+};
+
+// Step 3: Submit Order to Supabase
+const submitOrder = async () => {
+  isSubmitting.value = true;
+
+  try {
+      const { error } = await supabase
+        .from('orders') 
+        .insert({
+            customer_name: customer.value.name,
+            phone: customer.value.phone,
+            address: customer.value.address,
+            items: cartStore.items, 
+            total_price: cartStore.totalAmount || cartStore.totalPrice,
+            status: 'pending'
+        });
+
+      if (error) throw error; 
+
+      toast.show('ការកុម្ម៉ង់បានជោគជ័យ! ✅', 'success');
+      
+      // Clear Cart
+      if (cartStore.clearCart) {
+          cartStore.clearCart(); 
+      } else {
+          cartStore.items = [];
+      }
+      
+      localStorage.removeItem('customer_location');
+      customer.value = { name: '', phone: '', address: '' };
+      showPaymentModal.value = false;
+      
+      router.push('/receipt');
+
+  } catch (err) {
+      console.error('Supabase Error:', err);
+      toast.show('មានបញ្ហាពេលកុម្ម៉ង់: ' + err.message, 'error');
+  } finally {
+      isSubmitting.value = false;
+  }
 };
 
 // Delete Functionality
@@ -98,58 +149,6 @@ const confirmDelete = () => {
     showDeleteModal.value = false;
     itemToDelete.value = null;
     toast.show('បានលុបម្ហូបចេញពីកន្ត្រក', 'success');
-  }
-};
-
-// 🔥 Function Send Order to Supabase
-const confirmCheckout = async () => {
-  // 1. Validate Form
-  if (!customer.value.name || !customer.value.phone || !customer.value.address) {
-      toast.show("សូមបំពេញ ឈ្មោះ, លេខទូរស័ព្ទ និងទីតាំង!", "error");
-      return;
-  }
-
-  isSubmitting.value = true;
-
-  try {
-      // 2. Send Data to Supabase Table 'orders'
-      const { error } = await supabase
-        .from('orders') 
-        .insert({
-            customer_name: customer.value.name,
-            phone: customer.value.phone,
-            address: customer.value.address,
-            items: cartStore.items, 
-            total_price: cartStore.totalAmount || cartStore.totalPrice
-        });
-
-      if (error) throw error; 
-
-      // 3. Success
-      toast.show('ការកុម្ម៉ង់បានជោគជ័យ! ✅', 'success');
-      
-      // Clear Cart
-      if (cartStore.clearCart) {
-          cartStore.clearCart(); 
-      } else {
-          cartStore.items = [];
-      }
-      
-      // Clear LocalStorage Location
-      localStorage.removeItem('customer_location');
-
-      // Reset Form & Modal
-      customer.value = { name: '', phone: '', address: '' };
-      showCheckoutModal.value = false;
-      
-      // Redirect to Receipt
-      router.push('/receipt');
-
-  } catch (err) {
-      console.error('Supabase Error:', err);
-      toast.show('មានបញ្ហាពេលកុម្ម៉ង់: ' + err.message, 'error');
-  } finally {
-      isSubmitting.value = false;
   }
 };
 </script>
@@ -188,13 +187,71 @@ const confirmCheckout = async () => {
             <p class="text-gray-550 text-sm">សរុបទឹកប្រាក់ (Total)</p>
             <p class="text-4xl font-bold text-orange-600 font-header">{{ formatPrice(cartStore.totalAmount || cartStore.totalPrice) }}</p>
           </div>
-          <button @click="checkout" class="w-full sm:w-auto bg-orange-600 text-white px-10 py-4 rounded-xl font-bold shadow-lg hover:bg-orange-700 hover:scale-105 transition-all flex justify-center items-center gap-3 text-lg">
+          <button @click="openCheckout" class="w-full sm:w-auto bg-orange-600 text-white px-10 py-4 rounded-xl font-bold shadow-lg hover:bg-orange-700 hover:scale-105 transition-all flex justify-center items-center gap-3 text-lg">
             <span>កម្ម៉ង់ឥឡូវ</span>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
           </button>
         </div>
       </div>
     </div>
+
+    <Transition name="fade">
+      <div v-if="showInfoModal" class="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative">
+          
+          <h3 class="text-xl font-black text-slate-800 mb-2 text-center">ព័ត៌មានដឹកជញ្ជូន 🛵</h3>
+          
+          <div class="space-y-3 mt-4">
+             <input v-model="customer.name" placeholder="ឈ្មោះរបស់អ្នក" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 font-bold outline-none focus:border-orange-500" />
+             <input v-model="customer.phone" type="tel" placeholder="លេខទូរស័ព្ទ (012...)" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 font-bold outline-none focus:border-orange-500" />
+             
+             <div class="space-y-2">
+                 <textarea v-model="customer.address" rows="2" placeholder="ទីតាំងដឹកជញ្ជូន..." class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 font-medium outline-none focus:border-orange-500"></textarea>
+                 
+                 <button 
+                    @click="getLocation" 
+                    class="w-full py-2 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm border border-blue-100 hover:bg-blue-100 flex items-center justify-center gap-2" 
+                    :disabled="isLoadingLocation"
+                 >
+                     <span v-if="isLoadingLocation" class="animate-spin">⏳</span>
+                     <span v-else>🎯 យកទីតាំងបច្ចុប្បន្ន (GPS)</span>
+                 </button>
+             </div>
+          </div>
+
+          <div class="flex gap-3 mt-6">
+            <button @click="showInfoModal = false" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">បោះបង់</button>
+            <button @click="proceedToPayment" class="flex-1 py-3 rounded-xl font-bold text-white bg-orange-600 shadow-lg hover:bg-orange-700">បន្តទៅបង់ប្រាក់</button>
+          </div>
+
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="fade">
+      <div v-if="showPaymentModal" class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl text-center relative">
+          
+          <h3 class="text-xl font-black text-slate-800 mb-2">ស្កេនដើម្បីបង់ប្រាក់ 💸</h3>
+          <p class="text-gray-500 text-sm mb-4">សរុប: <span class="text-orange-600 font-bold text-lg">{{ formatPrice(cartStore.totalAmount || cartStore.totalPrice) }}</span></p>
+          
+          <div class="bg-white p-2 rounded-2xl border-2 border-dashed border-gray-300 mb-6 inline-block">
+             <img src="/qr.jpg" class="w-48 h-48 object-contain rounded-lg" alt="QR Payment" />
+          </div>
+
+          <p class="text-xs text-gray-400 mb-6">សូមស្កេន និងបង់ប្រាក់ រួចចុចប៊ូតុងខាងក្រោម</p>
+
+          <div class="flex gap-3">
+            <button @click="showPaymentModal = false" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">ថយក្រោយ</button>
+            <button @click="submitOrder" :disabled="isSubmitting" class="flex-1 py-3 rounded-xl font-bold text-white bg-green-600 shadow-lg hover:bg-green-700 flex justify-center gap-2">
+               <span v-if="isSubmitting" class="animate-spin">⏳</span>
+               {{ isSubmitting ? 'កំពុងផ្ញើ...' : 'បង់រួចរាល់ ✅' }}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </Transition>
 
     <Transition name="fade">
       <div v-if="showDeleteModal" class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
@@ -217,68 +274,6 @@ const confirmCheckout = async () => {
                     លុបចេញ
                 </button>
             </div>
-        </div>
-      </div>
-    </Transition>
-
-    <Transition name="fade">
-      <div v-if="showCheckoutModal" class="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl transform transition-all scale-100 relative">
-          
-          <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
-          </div>
-
-          <div class="text-center mb-6">
-            <h3 class="text-xl font-black text-slate-800 mb-2">បញ្ជាក់ការកុម្ម៉ង់</h3>
-            <p class="text-slate-500 text-sm mb-4">សូមពិនិត្យព័ត៌មានខាងក្រោមមុននឹងបញ្ជាក់។</p>
-            
-            <div class="space-y-3 text-left">
-                <div>
-                    <label class="text-xs font-bold text-gray-500 ml-2">ឈ្មោះរបស់អ្នក</label>
-                    <input v-model="customer.name" placeholder="ឈ្មោះ" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 outline-none focus:border-orange-500 font-bold" />
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-gray-500 ml-2">លេខទូរស័ព្ទ</label>
-                    <input v-model="customer.phone" type="tel" placeholder="012 345 678" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 outline-none focus:border-orange-500 font-bold" />
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-gray-500 ml-2">ទីតាំងដឹកជញ្ជូន 📍</label>
-                    
-                    <div class="flex gap-2 mb-2">
-                        <textarea v-model="customer.address" rows="2" placeholder="ផ្ទះលេខ, ផ្លូវ, ភូមិ... ឬចុចប៊ូតុង" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 outline-none focus:border-orange-500 font-medium"></textarea>
-                    </div>
-
-                    <button 
-                        @click="getLocation"
-                        type="button"
-                        class="w-full py-2 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm border border-blue-100 hover:bg-blue-100 flex items-center justify-center gap-2"
-                        :disabled="isLoadingLocation"
-                    >
-                         <span v-if="isLoadingLocation" class="animate-spin">⏳</span>
-                         <span v-else>🎯 យកទីតាំងបច្ចុប្បន្ន (GPS)</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="bg-orange-50 rounded-xl p-3 mt-4 border border-orange-100 flex justify-between items-center px-6">
-               <span class="text-xs font-bold text-orange-400 uppercase tracking-widest">តម្លៃសរុប</span>
-               <span class="text-xl font-black text-orange-700">{{ formatPrice(cartStore.totalAmount || cartStore.totalPrice) }}</span>
-            </div>
-          </div>
-
-          <div class="flex gap-3">
-            <button @click="showCheckoutModal = false" class="flex-1 py-3.5 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors">
-              បោះបង់
-            </button>
-            <button @click="confirmCheckout" :disabled="isSubmitting" class="flex-1 py-3.5 rounded-2xl font-bold text-white bg-orange-600 shadow-lg shadow-orange-200 hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 transition-all disabled:opacity-50 flex justify-center gap-2">
-              <span v-if="isSubmitting" class="animate-spin">⏳</span>
-              {{ isSubmitting ? 'កំពុងផ្ញើ...' : 'យល់ព្រម' }}
-            </button>
-          </div>
-
         </div>
       </div>
     </Transition>
