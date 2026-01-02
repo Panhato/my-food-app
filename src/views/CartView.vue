@@ -4,7 +4,7 @@ import { useCartStore } from '../stores/cart';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
 import { useRouter } from 'vue-router'; 
-import { supabase } from '../supabase'; // 🔥 1. Import Supabase ដែលបានបង្កើត
+import { supabase } from '../supabase'; 
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
@@ -16,6 +16,7 @@ const showCheckoutModal = ref(false);
 const showDeleteModal = ref(false);
 const isSubmitting = ref(false);
 const itemToDelete = ref(null);
+const isLoadingLocation = ref(false); // 🔥 State for location loading
 
 // State for Customer Info
 const customer = ref({
@@ -24,14 +25,45 @@ const customer = ref({
   address: ''
 });
 
-// 🔥 Auto-fill: ទាញទិន្នន័យពី Profile មកបំពេញឱ្យស្រាប់
+// 🔥 Auto-fill: Retrieve data from Profile or LocalStorage
 onMounted(() => {
   if (authStore.user) {
     customer.value.name = authStore.user.username || '';
     customer.value.phone = authStore.user.phone || '';
     customer.value.address = authStore.user.address || '';
   }
+  
+  // Try to get saved location from Menu page if available
+  const savedLocation = localStorage.getItem('customer_location');
+  if(savedLocation) {
+      customer.value.address = savedLocation;
+  }
 });
+
+// 🔥 Function to Get Current Location
+const getLocation = () => {
+  if (!navigator.geolocation) {
+    alert("Browser របស់អ្នកមិនស្គាល់មុខងារនេះទេ");
+    return;
+  }
+  
+  isLoadingLocation.value = true;
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      // Create Google Maps Link
+      const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
+      
+      customer.value.address = mapLink;
+      isLoadingLocation.value = false;
+    },
+    (error) => {
+      alert("មិនអាចចាប់ទីតាំងបានទេ។ សូមវាយបញ្ចូលដោយដៃ។");
+      isLoadingLocation.value = false;
+    }
+  );
+};
 
 const formatPrice = (value) => {
   let val = parseFloat(value);
@@ -46,11 +78,10 @@ const checkout = () => {
       toast.show('កន្ត្រករបស់អ្នកទទេ!', 'error'); 
       return; 
   }
-  // Update ទិន្នន័យម្តងទៀត ក្រែងលោគាត់ទើបកែ Profile
+  // Update data again in case profile was just updated
   if (authStore.user) {
     if(!customer.value.name) customer.value.name = authStore.user.username;
     if(!customer.value.phone) customer.value.phone = authStore.user.phone;
-    if(!customer.value.address) customer.value.address = authStore.user.address;
   }
   showCheckoutModal.value = true;
 };
@@ -70,7 +101,7 @@ const confirmDelete = () => {
   }
 };
 
-// 🔥 Function ផ្ញើការកម្ម៉ងទៅ Supabase
+// 🔥 Function Send Order to Supabase
 const confirmCheckout = async () => {
   // 1. Validate Form
   if (!customer.value.name || !customer.value.phone || !customer.value.address) {
@@ -81,34 +112,37 @@ const confirmCheckout = async () => {
   isSubmitting.value = true;
 
   try {
-      // 2. ផ្ញើទិន្នន័យទៅ Supabase Table 'orders'
+      // 2. Send Data to Supabase Table 'orders'
       const { error } = await supabase
-        .from('orders') // ប្រាកដថាឈ្មោះ Table ត្រូវគ្នា
+        .from('orders') 
         .insert({
             customer_name: customer.value.name,
             phone: customer.value.phone,
             address: customer.value.address,
-            items: cartStore.items, // Supabase នឹងបម្លែងជា JSON ស្វ័យប្រវត្តិ
+            items: cartStore.items, 
             total_price: cartStore.totalAmount || cartStore.totalPrice
         });
 
-      if (error) throw error; // បើមានបញ្ហា រុញទៅ Catch
+      if (error) throw error; 
 
-      // 3. ជោគជ័យ
+      // 3. Success
       toast.show('ការកុម្ម៉ង់បានជោគជ័យ! ✅', 'success');
       
-      // សម្អាតកន្ត្រក
+      // Clear Cart
       if (cartStore.clearCart) {
           cartStore.clearCart(); 
       } else {
           cartStore.items = [];
       }
       
+      // Clear LocalStorage Location
+      localStorage.removeItem('customer_location');
+
       // Reset Form & Modal
       customer.value = { name: '', phone: '', address: '' };
       showCheckoutModal.value = false;
       
-      // ទៅកាន់ទំព័រវិក្កយបត្រ
+      // Redirect to Receipt
       router.push('/receipt');
 
   } catch (err) {
@@ -211,8 +245,21 @@ const confirmCheckout = async () => {
                     <input v-model="customer.phone" type="tel" placeholder="012 345 678" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 outline-none focus:border-orange-500 font-bold" />
                 </div>
                 <div>
-                    <label class="text-xs font-bold text-gray-500 ml-2">ទីតាំងដឹកជញ្ជូន</label>
-                    <textarea v-model="customer.address" rows="2" placeholder="ផ្ទះលេខ, ផ្លូវ, ភូមិ..." class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 outline-none focus:border-orange-500 font-medium"></textarea>
+                    <label class="text-xs font-bold text-gray-500 ml-2">ទីតាំងដឹកជញ្ជូន 📍</label>
+                    
+                    <div class="flex gap-2 mb-2">
+                        <textarea v-model="customer.address" rows="2" placeholder="ផ្ទះលេខ, ផ្លូវ, ភូមិ... ឬចុចប៊ូតុង" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 outline-none focus:border-orange-500 font-medium"></textarea>
+                    </div>
+
+                    <button 
+                        @click="getLocation"
+                        type="button"
+                        class="w-full py-2 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm border border-blue-100 hover:bg-blue-100 flex items-center justify-center gap-2"
+                        :disabled="isLoadingLocation"
+                    >
+                         <span v-if="isLoadingLocation" class="animate-spin">⏳</span>
+                         <span v-else>🎯 យកទីតាំងបច្ចុប្បន្ន (GPS)</span>
+                    </button>
                 </div>
             </div>
 

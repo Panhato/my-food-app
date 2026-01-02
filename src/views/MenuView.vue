@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'; // Added onMounted
+import { ref, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useProductStore } from '../stores/products';
 import { useCartStore } from '../stores/cart';
@@ -18,7 +18,7 @@ const cartStore = useCartStore();
 const bannerStore = useBannerStore();
 
 const categories = [
-  { name: 'ទាំងអស់', icon: '🍽️' }, // Added icons for better UI
+  { name: 'ទាំងអស់', icon: '🍽️' },
   { name: 'សម្ល', icon: '🍲' },
   { name: 'គ្រឿងក្លែម', icon: '🍢' },
   { name: 'ចៀន', icon: '🍗' },
@@ -28,40 +28,6 @@ const categories = [
 
 const activeCategory = ref('ទាំងអស់');
 const searchQuery = ref('');
-
-// 🔥 NEW: Location Logic
-const userAddress = ref(localStorage.getItem('customer_location') || '');
-const isLoadingLocation = ref(false);
-
-const getLocation = () => {
-  if (!navigator.geolocation) {
-    alert("Browser របស់អ្នកមិនស្គាល់មុខងារនេះទេ");
-    return;
-  }
-  
-  isLoadingLocation.value = true;
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      // Create Google Maps Link
-      const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
-      
-      userAddress.value = mapLink;
-      localStorage.setItem('customer_location', mapLink); // Save for Cart
-      isLoadingLocation.value = false;
-    },
-    (error) => {
-      alert("មិនអាចចាប់ទីតាំងបានទេ។ សូមវាយបញ្ចូលដោយដៃ។");
-      isLoadingLocation.value = false;
-    }
-  );
-};
-
-// Update address when typing
-const updateAddress = (e) => {
-    localStorage.setItem('customer_location', userAddress.value);
-}
 
 const filteredProducts = computed(() => {
   return productStore.products.filter(p => {
@@ -123,32 +89,6 @@ const filteredProducts = computed(() => {
     </div>
 
     <div class="max-w-[1700px] mx-auto px-4 md:px-8 mt-28 lg:mt-24 mb-4 animate-fade-in">
-        
-        <div class="mb-6 bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center">
-             <div class="flex-1 w-full">
-                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 ml-2">ដឹកជញ្ជូនទៅកាន់:</label>
-                 <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 focus-within:ring-2 ring-orange-100 transition-all">
-                     <span class="text-orange-500 pl-2">📍</span>
-                     <input 
-                        v-model="userAddress" 
-                        @input="updateAddress"
-                        type="text" 
-                        placeholder="បញ្ចូលទីតាំង ឬចុចប៊ូតុងខាងស្តាំ..." 
-                        class="bg-transparent w-full p-2 outline-none text-slate-700 font-bold placeholder:font-medium" 
-                     />
-                 </div>
-             </div>
-             <button 
-                @click="getLocation"
-                class="w-full md:w-auto px-6 py-4 rounded-2xl font-bold text-white shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
-                :class="isLoadingLocation ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 shadow-blue-200'"
-                :disabled="isLoadingLocation"
-             >
-                 <span v-if="isLoadingLocation" class="animate-spin">⏳</span>
-                 <span v-else>🎯 ទីតាំងបច្ចុប្បន្ន</span>
-             </button>
-        </div>
-
         <div class="relative w-full h-[100px] md:h-[160px] rounded-[2rem] overflow-hidden shadow-xl shadow-orange-100 border-4 border-white bg-white">
             <Swiper
                 :modules="modules"
