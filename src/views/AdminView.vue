@@ -12,31 +12,31 @@ const products = ref([]);
 const banners = ref([]);
 const chefs = ref([]);
 const orders = ref([]); 
-const users = ref([]); // 🔥 Store User Data
+const users = ref([]); 
 
 // ========================
-// 0. USERS LOGIC (NEW 🔥)
+// 0. USERS LOGIC
 // ========================
 const fetchUsers = async () => {
   const { data, error } = await supabase
     .from('app_users')
     .select('*')
-    .order('last_seen', { ascending: false }); // Most recent users first
+    .order('last_seen', { ascending: false });
 
   if (!error) users.value = data || [];
 };
 
-// Check Online Status (Active within last 10 mins)
 const isOnline = (lastSeen) => {
     if (!lastSeen) return false;
     const diff = new Date() - new Date(lastSeen);
-    return diff < 10 * 60 * 1000; // 10 minutes
+    return diff < 10 * 60 * 1000; 
 };
 
 // ========================
 // ORDER LOGIC
 // ========================
 const fetchOrders = async () => {
+  // 🔥 Select * នឹងយក receipt_url មកជាមួយគ្នា
   const { data, error } = await supabase.from('orders').select('*').order('id', { ascending: false });
   if (error) console.error(error);
   orders.value = data || [];
@@ -75,7 +75,7 @@ const formatItems = (itemsData) => {
 };
 
 // ========================
-// PRODUCTS, BANNERS, CHEFS LOGIC (Keep as is)
+// PRODUCTS, BANNERS, CHEFS LOGIC
 // ========================
 const newProduct = ref({ title: '', price: '', category: 'ម្ហូប', image: null, desc: '', imageFile: null });
 const isEditingProduct = ref(false);
@@ -144,7 +144,7 @@ onMounted(() => {
   fetchProducts();
   fetchBanners();
   fetchChefs();
-  fetchUsers(); // 🔥 Call Users
+  fetchUsers();
 });
 </script>
 
@@ -185,9 +185,7 @@ onMounted(() => {
                  </div>
 
                  <div class="flex items-center gap-4">
-                     <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-2xl">
-                         👤
-                     </div>
+                     <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-2xl">👤</div>
                      <div>
                          <p class="font-black text-lg text-slate-800">{{ user.phone }}</p>
                          <p class="text-xs text-gray-500">Last Seen: {{ formatTimeAgo(user.last_seen) }}</p>
@@ -220,8 +218,21 @@ onMounted(() => {
                     <div class="text-gray-500 text-sm mt-1">📞 {{ order.phone }} | 📍 {{ order.address }}</div>
                     <div class="mt-4 bg-gray-50 p-3 rounded-xl"><p class="text-sm font-medium text-gray-700">{{ formatItems(order.items) }}</p></div>
                 </div>
+                
                 <div class="flex flex-col items-end justify-between gap-4 pl-4 border-l border-gray-50">
-                    <p class="text-3xl font-black text-orange-600">${{ order.total_price }}</p>
+                    <div class="text-right">
+                        <p class="text-3xl font-black text-orange-600">${{ order.total_price }}</p>
+                        
+                        <div v-if="order.receipt_url" class="mt-2">
+                            <a :href="order.receipt_url" target="_blank" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors">
+                                🧾 មើលវិក្កយបត្រ
+                            </a>
+                        </div>
+                        <div v-else class="mt-2">
+                            <span class="text-xs text-gray-400 font-medium">💵 បង់លុយផ្ទាល់</span>
+                        </div>
+                    </div>
+
                     <div class="flex flex-col gap-2 w-full">
                         <button v-if="order.status === 'pending'" @click="updateOrderStatus(order.id, 'cooking')" class="px-6 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600">👨‍🍳 Start Cooking</button>
                         <button v-if="order.status === 'cooking'" @click="updateOrderStatus(order.id, 'delivering')" class="px-6 py-2 bg-blue-500 text-white text-sm font-bold rounded-xl hover:bg-blue-600">🛵 Start Delivery</button>
