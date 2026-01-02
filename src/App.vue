@@ -3,10 +3,13 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { RouterLink, RouterView } from 'vue-router';
 import { useCartStore } from './stores/cart';
 import { useAuthStore } from './stores/auth';
-import Toast from './components/Toast.vue'; // 🔥 Import Toast Component
+import { useProductStore } from './stores/products'; // 🔥 1. Import Product Store
+import Toast from './components/Toast.vue';
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
+const productStore = useProductStore(); // 🔥 2. ហៅ Product Store មកប្រើ
+
 const isMenuOpen = ref(false); 
 const isScrolled = ref(false); 
 
@@ -20,6 +23,9 @@ const closeMenu = () => {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll);
+  
+  // 🔥 3. ទាញទិន្នន័យម្ហូបពី Supabase ពេលបើក App ភ្លាម
+  productStore.fetchProducts();
 });
 
 onUnmounted(() => {
@@ -98,14 +104,12 @@ onUnmounted(() => {
             
             <div v-else class="flex items-center gap-3 ml-2">
                <RouterLink to="/profile" class="flex items-center gap-3 group cursor-pointer" title="មើលគណនី">
-                  
                   <div class="w-11 h-11 rounded-full overflow-hidden border-2 border-slate-200 group-hover:border-orange-400 transition-all shadow-sm bg-white">
                     <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" class="w-full h-full object-cover" alt="Profile" />
                     <div v-else class="w-full h-full bg-slate-100 flex items-center justify-center text-lg text-slate-400 group-hover:bg-orange-50 transition-colors">
                       👤
                     </div>
                   </div>
-
                   <div class="flex flex-col">
                       <span class="text-sm font-bold text-slate-700 group-hover:text-orange-600 transition-colors leading-none">
                         {{ authStore.user?.username }}

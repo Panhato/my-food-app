@@ -7,8 +7,7 @@ header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers
 $data = json_decode(file_get_contents("php://input"));
 
 if(isset($data->id)) {
-    $host = "localhost"; 
-    $user = "root"; 
+    include 'db_connect.php';
     $pass = ""; 
     $db   = "food_shop_db";
 

@@ -8,7 +8,7 @@ export const useBannerStore = defineStore('banners', () => {
   // Part 1: Main Banners (Large Slide) - Uses API
   // ==========================================
   const banners = ref([]);
-  const API_URL = 'http://localhost/my-food-app/public/api';
+const API_URL = 'https://my-food-shop.rf.gd/api';
 
   // 1. Fetch Data (READ)
   const fetchBanners = async () => {

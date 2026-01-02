@@ -1,22 +1,23 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useCartStore } from '../stores/cart';
-import { useAuthStore } from '../stores/auth';   // 🔥 1. Import Auth Store
-import { useToastStore } from '../stores/toast'; // 🔥 2. Import Toast Store
+import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast';
 import { useRouter } from 'vue-router'; 
+import { supabase } from '../supabase'; // 🔥 1. Import Supabase ដែលបានបង្កើត
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
 const toast = useToastStore();
 const router = useRouter();
 
-// State សម្រាប់ Modal
+// State for Modals
 const showCheckoutModal = ref(false);
 const showDeleteModal = ref(false);
 const isSubmitting = ref(false);
 const itemToDelete = ref(null);
 
-// State សម្រាប់ព័ត៌មានអតិថិជន
+// State for Customer Info
 const customer = ref({
   name: '',
   phone: '',
@@ -39,7 +40,7 @@ const formatPrice = (value) => {
   return '$' + val.toFixed(2);
 };
 
-// បើក Modal Checkout
+// Open Checkout Modal
 const checkout = () => {
   if (cartStore.items.length === 0) { 
       toast.show('កន្ត្រករបស់អ្នកទទេ!', 'error'); 
@@ -54,7 +55,7 @@ const checkout = () => {
   showCheckoutModal.value = true;
 };
 
-// មុខងារលុប
+// Delete Functionality
 const initiateDelete = (itemId) => {
   itemToDelete.value = itemId;
   showDeleteModal.value = true;
@@ -69,9 +70,9 @@ const confirmDelete = () => {
   }
 };
 
-// 🔥 Function ផ្ញើការកម្ម៉ង (Simulation)
-const confirmCheckout = () => {
-  // 1. Validate
+// 🔥 Function ផ្ញើការកម្ម៉ងទៅ Supabase
+const confirmCheckout = async () => {
+  // 1. Validate Form
   if (!customer.value.name || !customer.value.phone || !customer.value.address) {
       toast.show("សូមបំពេញ ឈ្មោះ, លេខទូរស័ព្ទ និងទីតាំង!", "error");
       return;
@@ -79,28 +80,43 @@ const confirmCheckout = () => {
 
   isSubmitting.value = true;
 
-  // 2. Simulate API Call (រង់ចាំ 2 វិនាទី)
-  setTimeout(() => {
-      // a. បង្ហាញជោគជ័យ
+  try {
+      // 2. ផ្ញើទិន្នន័យទៅ Supabase Table 'orders'
+      const { error } = await supabase
+        .from('orders') // ប្រាកដថាឈ្មោះ Table ត្រូវគ្នា
+        .insert({
+            customer_name: customer.value.name,
+            phone: customer.value.phone,
+            address: customer.value.address,
+            items: cartStore.items, // Supabase នឹងបម្លែងជា JSON ស្វ័យប្រវត្តិ
+            total_price: cartStore.totalAmount || cartStore.totalPrice
+        });
+
+      if (error) throw error; // បើមានបញ្ហា រុញទៅ Catch
+
+      // 3. ជោគជ័យ
       toast.show('ការកុម្ម៉ង់បានជោគជ័យ! ✅', 'success');
       
-      // b. សម្អាតកន្ត្រក (Store គួរតែមាន function នេះ)
-      // បើ Store បងអត់មាន clearCart ទេ អាចប្រើ cartStore.items = [] ក៏បាន
+      // សម្អាតកន្ត្រក
       if (cartStore.clearCart) {
           cartStore.clearCart(); 
       } else {
-          cartStore.items = []; // Fallback
+          cartStore.items = [];
       }
       
-      // c. Reset Form & Modal
+      // Reset Form & Modal
       customer.value = { name: '', phone: '', address: '' };
       showCheckoutModal.value = false;
+      
+      // ទៅកាន់ទំព័រវិក្កយបត្រ
+      router.push('/receipt');
+
+  } catch (err) {
+      console.error('Supabase Error:', err);
+      toast.show('មានបញ្ហាពេលកុម្ម៉ង់: ' + err.message, 'error');
+  } finally {
       isSubmitting.value = false;
-
-      // d. ទៅកាន់ទំព័រវិក្កយបត្រ ឬ ទំព័រដើម
-      router.push('/receipt'); // ឬ router.push('/')
-
-  }, 2000);
+  }
 };
 </script>
 

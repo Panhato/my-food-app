@@ -9,7 +9,7 @@ const form = ref({
 });
 
 const showSuccessModal = ref(false);
-const API_URL = 'http://localhost/my-food-app/public/api'; 
+const API_URL = 'https://my-food-shop.rf.gd/api';
 
 const submitMessage = async () => {
   if (!form.value.name || !form.value.email || !form.value.message) {
