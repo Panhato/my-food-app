@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue'; // 🔥 1. Import computed
 import { RouterLink, RouterView } from 'vue-router';
 import { useCartStore } from './stores/cart';
 import { useAuthStore } from './stores/auth';
@@ -13,6 +13,16 @@ const productStore = useProductStore();
 const isMenuOpen = ref(false); 
 const isScrolled = ref(false); 
 
+// 🔥 2. បង្កើត variable សម្រាប់ចាប់យក Avatar ពី Metadata
+const userAvatar = computed(() => {
+  return authStore.user?.user_metadata?.avatar || null;
+});
+
+// 🔥 3. បង្កើត variable សម្រាប់ចាប់យក Username
+const userName = computed(() => {
+  return authStore.user?.user_metadata?.username || authStore.user?.email || 'User';
+});
+
 const handleScroll = () => {
   isScrolled.value = window.scrollY > 20;
 };
@@ -23,7 +33,6 @@ const closeMenu = () => {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll);
-  // ទាញទិន្នន័យម្ហូបពេលបើក App
   productStore.fetchProducts();
 });
 
@@ -104,14 +113,14 @@ onUnmounted(() => {
             <div v-else class="flex items-center gap-3 ml-2">
                <RouterLink to="/profile" class="flex items-center gap-3 group cursor-pointer" title="មើលគណនី">
                   <div class="w-11 h-11 rounded-full overflow-hidden border-2 border-slate-200 group-hover:border-orange-400 transition-all shadow-sm bg-white">
-                    <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" class="w-full h-full object-cover" alt="Profile" />
+                    <img v-if="userAvatar" :src="userAvatar" class="w-full h-full object-cover" alt="Profile" />
                     <div v-else class="w-full h-full bg-slate-100 flex items-center justify-center text-lg text-slate-400 group-hover:bg-orange-50 transition-colors">
                       👤
                     </div>
                   </div>
                   <div class="flex flex-col">
                       <span class="text-sm font-bold text-slate-700 group-hover:text-orange-600 transition-colors leading-none">
-                        {{ authStore.user?.username }}
+                        {{ userName }}
                       </span>
                   </div>
                </RouterLink>
@@ -168,12 +177,12 @@ onUnmounted(() => {
             <div v-else class="mt-4 pt-4 border-t border-gray-100">
                <RouterLink to="/profile" @click="closeMenu" class="flex items-center gap-3 mobile-link mb-2 bg-slate-50 p-3">
                   <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm bg-white">
-                     <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" class="w-full h-full object-cover" />
+                     <img v-if="userAvatar" :src="userAvatar" class="w-full h-full object-cover" />
                      <div v-else class="w-full h-full bg-slate-100 flex items-center justify-center text-xl text-slate-400">👤</div>
                   </div>
                   <div>
-                     <p class="text-xs text-slate-400 font-bold mb-0.5">គណនី</p>
-                     <span class="font-black text-lg text-slate-800">{{ authStore.user?.username }}</span>
+                      <p class="text-xs text-slate-400 font-bold mb-0.5">គណនី</p>
+                      <span class="font-black text-lg text-slate-800">{{ userName }}</span>
                   </div>
                </RouterLink>
                <button @click="authStore.logout(); closeMenu()" class="block w-full text-center py-3 border border-red-200 text-red-600 rounded-xl font-bold hover:bg-red-50 transition-colors">Logout</button>
