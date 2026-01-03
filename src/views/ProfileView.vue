@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast'; 
 
@@ -16,6 +16,12 @@ const form = ref({
   avatar: null 
 });
 
+// 🔥 Computed Property: ជួយចាប់យកទិន្នន័យពី Supabase user_metadata មកប្រើងាយស្រួល
+const userProfile = computed(() => {
+    return authStore.user?.user_metadata || {};
+});
+
+// ពេលបើកមកភ្លាម Load ទិន្នន័យដាក់ចូល Form
 onMounted(() => {
   if (authStore.user) {
     loadUserData();
@@ -23,10 +29,13 @@ onMounted(() => {
 });
 
 const loadUserData = () => {
-    form.value.username = authStore.user.username;
-    form.value.phone = authStore.user.phone || '';
-    form.value.address = authStore.user.address || '';
-    form.value.avatar = authStore.user.avatar || null; 
+    // 🔥 កែសម្រួល៖ ទាញពី user_metadata ជំនួសឱ្យ user ផ្ទាល់
+    const metadata = authStore.user?.user_metadata || {};
+    
+    form.value.username = metadata.username || '';
+    form.value.phone = metadata.phone || '';
+    form.value.address = metadata.address || '';
+    form.value.avatar = metadata.avatar || null; 
 };
 
 const triggerFileInput = () => {
@@ -49,31 +58,33 @@ const handleFileUpload = (event) => {
     }
 };
 
-const handleUpdate = () => {
+const handleUpdate = async () => {
   if (!form.value.username) {
     toast.show("សូមបំពេញឈ្មោះគណនីរបស់អ្នក!", "error");
     return;
   }
 
-  const success = authStore.updateProfile({
-    username: form.value.username,
-    phone: form.value.phone,
-    address: form.value.address,
-    avatar: form.value.avatar 
-  });
+  try {
+      // 🔥 ប្រើ await ព្រោះ updateProfile ជា async function
+      await authStore.updateProfile({
+        username: form.value.username,
+        phone: form.value.phone,
+        address: form.value.address,
+        avatar: form.value.avatar 
+      });
 
-  if (success) {
-    toast.show("ព័ត៌មានត្រូវបានកែប្រែដោយជោគជ័យ!", "success");
-    isEditing.value = false;
-  } else {
-    toast.show("មានបញ្ហាក្នុងការរក្សាទុក!", "error");
+      toast.show("ព័ត៌មានត្រូវបានកែប្រែដោយជោគជ័យ!", "success");
+      isEditing.value = false;
+  } catch (error) {
+      console.error(error);
+      toast.show("មានបញ្ហាក្នុងការរក្សាទុក!", "error");
   }
 };
 
 const cancelEdit = () => {
   loadUserData(); 
   isEditing.value = false;
-  toast.show("ការកែប្រែត្រូវបានបោះបង់", "error");
+  toast.show("ការកែប្រែត្រូវបានបោះបង់", "info"); // Changed to info for better UX
 };
 </script>
 
@@ -82,7 +93,6 @@ const cancelEdit = () => {
     <div class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
       
       <div class="h-40 animated-gradient relative">
-         
          <div class="absolute bottom-0 left-0 w-full overflow-hidden leading-none">
             <svg class="relative block w-full h-[40px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
                 <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="fill-white opacity-30"></path>
@@ -95,7 +105,7 @@ const cancelEdit = () => {
                 @click="isEditing && triggerFileInput()"
                 :class="isEditing ? 'hover:ring-4 hover:ring-orange-300 ring-offset-2' : ''"
             >
-                <img v-if="form.avatar" :src="form.avatar" class="w-full h-full rounded-full object-cover border-2 border-slate-100" />
+                <img v-if="isEditing ? form.avatar : userProfile.avatar" :src="isEditing ? form.avatar : userProfile.avatar" class="w-full h-full rounded-full object-cover border-2 border-slate-100" />
                 
                 <div v-else class="w-full h-full bg-slate-100 rounded-full flex items-center justify-center text-4xl text-slate-300 select-none">
                     👤
@@ -108,17 +118,17 @@ const cancelEdit = () => {
                 <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleFileUpload" />
             </div>
          </div>
-
       </div>
 
       <div class="pt-16 px-8 pb-8">
         
         <div class="flex justify-between items-start mb-6">
             <div>
-                <h1 class="text-2xl font-black text-slate-800">{{ authStore.user?.username }}</h1>
+                <h1 class="text-2xl font-black text-slate-800">{{ userProfile.username || 'អតិថិជន' }}</h1>
                 <span class="bg-orange-100 text-orange-600 text-xs px-3 py-1 rounded-full font-bold uppercase">
-                    {{ authStore.user?.role }} Account
+                    {{ userProfile.role || 'User' }} Account
                 </span>
+                <p class="text-xs text-gray-400 mt-1 font-bold">{{ authStore.user?.email }}</p>
             </div>
             
             <button 
@@ -134,11 +144,11 @@ const cancelEdit = () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <p class="text-xs text-slate-400 font-bold uppercase mb-1">លេខទូរស័ព្ទ</p>
-                    <p class="text-slate-800 font-bold text-lg">{{ authStore.user?.phone || 'មិនទាន់បំពេញ' }}</p>
+                    <p class="text-slate-800 font-bold text-lg">{{ userProfile.phone || 'មិនទាន់បំពេញ' }}</p>
                 </div>
                 <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <p class="text-xs text-slate-400 font-bold uppercase mb-1">អាស័យដ្ឋាន</p>
-                    <p class="text-slate-800 font-bold text-lg">{{ authStore.user?.address || 'មិនទាន់បំពេញ' }}</p>
+                    <p class="text-slate-800 font-bold text-lg">{{ userProfile.address || 'មិនទាន់បំពេញ' }}</p>
                 </div>
             </div>
         </div>
