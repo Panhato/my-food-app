@@ -1,74 +1,89 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { supabase } from '../supabase'; // 🔥 1. Import Supabase
 
 export const useAuthStore = defineStore('auth', () => {
+  const user = ref(null);
   const router = useRouter();
-  
-  // State: ទុកព័ត៌មានអ្នកប្រើប្រាស់
-  const user = ref(JSON.parse(localStorage.getItem('user')) || null);
 
-  // Getter: ឆែកថា Login ហើយឬនៅ?
-  const isAuthenticated = () => !!user.value;
-
-  // Getter: ឆែកថាជា Admin ឬអត់?
-  const isAdmin = () => user.value && user.value.role === 'admin';
-
-  // Action: Login
-  const login = (username, password) => {
-    // ករណីជា Admin (Password: admin123)
-    if (username === 'admin' && password === 'admin123') {
-      user.value = { 
-        username: 'Admin', 
-        role: 'admin', 
-        phone: '012 345 678', 
-        address: 'Phnom Penh',
-        avatar: null // 🔥 បន្ថែម Avatar (សំខាន់សម្រាប់ Profile Picture)
-      };
-      localStorage.setItem('user', JSON.stringify(user.value));
-      return true;
-    } 
-    // ករណីជា User ធម្មតា (Password: 1234)
-    else if (password === '1234') {
-      user.value = { 
-        username: username, 
-        role: 'user', 
-        phone: '', 
-        address: '',
-        avatar: null // 🔥 បន្ថែម Avatar សម្រាប់ User ថ្មី
-      };
-      localStorage.setItem('user', JSON.stringify(user.value));
-      return true;
+  // 🔥 2. មុខងារទាញយក User ពេល Refresh វេបសាយ (កុំឱ្យដាច់ Login)
+  const loadUser = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      user.value = data.user;
     }
-    return false;
   };
 
-  // Action: Update Profile (កែប្រែព័ត៌មាន + រូបភាព)
-  const updateProfile = (updatedInfo) => {
-    if (user.value) {
-      // បញ្ចូលព័ត៌មានចាស់ ជាមួយព័ត៌មានថ្មី (Merge)
-      user.value = { ...user.value, ...updatedInfo };
-      
-      // Save ចូល LocalStorage
-      localStorage.setItem('user', JSON.stringify(user.value));
-      return true;
-    }
-    return false;
+  // 🔥 3. Login ជាមួយ Supabase
+  const login = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (error) throw error; // បោះ Error ទៅឱ្យ LoginView ចាប់
+    user.value = data.user;
+    return true;
   };
 
-  // Action: Logout
-  const logout = () => {
+  // 🔥 4. Register ជាមួយ Supabase
+  const register = async (email, password, username, phone) => {
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        // ដាក់ព័ត៌មានបន្ថែមក្នុង User Metadata
+        data: { 
+            username: username, 
+            phone: phone,
+            role: 'user', // Default role
+            avatar: null
+        }
+      }
+    });
+
+    if (error) throw error;
+    user.value = data.user;
+    return true;
+  };
+
+  // 🔥 5. Update Profile (ឈ្មោះ, រូបភាព, លេខទូរស័ព្ទ)
+  const updateProfile = async (updatedInfo) => {
+    // updatedInfo គួរតែជា object ដូចជា { username: 'New Name', phone: '012...' }
+    const { data, error } = await supabase.auth.updateUser({
+      data: updatedInfo
+    });
+
+    if (error) throw error;
+    user.value = data.user; // Update state ក្នុង store ភ្លាមៗ
+    return true;
+  };
+
+  // 🔥 6. Logout
+  const logout = async () => {
+    await supabase.auth.signOut();
     user.value = null;
-    localStorage.removeItem('user');
-    window.location.href = '/login'; 
+    // Refresh ទំព័រដើម្បី Clear ទិន្នន័យចាស់ៗចោល
+    window.location.reload(); 
+  };
+
+  // Getters
+  const isAuthenticated = () => !!user.value;
+  
+  // ពិនិត្យមើល Role ឬ Email ថាជា Admin ឬអត់
+  const isAdmin = () => {
+      return user.value?.user_metadata?.role === 'admin' || user.value?.email === 'admin@gmail.com';
   };
 
   return { 
     user, 
-    isAuthenticated, 
-    isAdmin, 
+    loadUser, 
     login, 
+    register, 
     logout, 
-    updateProfile 
+    updateProfile, 
+    isAuthenticated, 
+    isAdmin 
   };
 });
