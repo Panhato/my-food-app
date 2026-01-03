@@ -3,12 +3,12 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { RouterLink, RouterView } from 'vue-router';
 import { useCartStore } from './stores/cart';
 import { useAuthStore } from './stores/auth';
-import { useProductStore } from './stores/products'; // 🔥 1. Import Product Store
+import { useProductStore } from './stores/products'; 
 import Toast from './components/Toast.vue';
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
-const productStore = useProductStore(); // 🔥 2. ហៅ Product Store មកប្រើ
+const productStore = useProductStore(); 
 
 const isMenuOpen = ref(false); 
 const isScrolled = ref(false); 
@@ -23,8 +23,7 @@ const closeMenu = () => {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll);
-  
-  // 🔥 3. ទាញទិន្នន័យម្ហូបពី Supabase ពេលបើក App ភ្លាម
+  // ទាញទិន្នន័យម្ហូបពេលបើក App
   productStore.fetchProducts();
 });
 
@@ -49,7 +48,7 @@ onUnmounted(() => {
         <div class="flex justify-between items-center h-16">
           
           <RouterLink to="/" @click="closeMenu" class="flex items-center gap-2 group">
-            <div class="bg-orange-500 text-white p-2 rounded-xl transform group-hover:rotate-12 transition-transform duration-300 shadow-lg shadow-orange-200">
+            <div class="bg-orange-600 text-white p-2 rounded-xl transform group-hover:rotate-12 transition-transform duration-300 shadow-lg shadow-orange-200">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
               </svg>
@@ -192,43 +191,65 @@ onUnmounted(() => {
       </RouterView>
     </main>
 
-    <footer class="bg-[#0f172a] text-white py-12 mt-auto">
-      <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 text-center md:text-left">
-        <div>
-          <h3 class="text-2xl font-black text-orange-500 mb-4">My Food</h3>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            រីករាយជាមួយរសជាតិអាហារដ៏ឈ្ងុយឆ្ងាញ់ ជាមួយសេវាកម្មដឹកជញ្ជូនរហ័សទាន់ចិត្ត គុណភាព និងអនាម័យជាចម្បង
-          </p>
-        </div>
-        <div>
-          <h3 class="text-lg font-bold text-white mb-4">ទំនាក់ទំនង</h3>
-          <ul class="space-y-3 text-slate-400 text-sm">
-            <li><a href="#" class="hover:text-orange-500">099 999 333</a></li>
-            <li><a href="#" class="hover:text-orange-500">Food_shop04@gmail.com</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3 class="text-lg font-bold text-white mb-4">តាមដានយើង</h3>
-          <div class="flex justify-center md:justify-start gap-4">
+    <footer class="bg-[#1a1f2c] text-slate-400 py-10 font-sans border-t border-slate-800 mt-auto">
+        <div class="max-w-7xl mx-auto px-6 md:px-8">
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-8">
             
-            <a href="https://www.facebook.com/profile.php?id=61583997748599" target="_blank" class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-[#1877F2] hover:text-white transition-all transform hover:scale-110">
-                <span class="font-bold text-xs">FB</span>
-            </a>
+            <div class="space-y-4">
+              <div class="flex items-center gap-2">
+                <div class="bg-orange-600 w-8 h-8 rounded-lg flex items-center justify-center text-white transform -rotate-3">
+                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+                   </svg>
+                </div>
+                <h2 class="text-xl font-black text-white tracking-tight">MyFood</h2>
+              </div>
+              <p class="text-sm leading-relaxed text-slate-500 max-w-xs">
+                រីករាយជាមួយរសជាតិអាហារដ៏ឈ្ងុយឆ្ងាញ់ ជាមួយសេវាកម្មដឹកជញ្ជូនរហ័សទាន់ចិត្ត ធានាគុណភាព និងអនាម័យ។
+              </p>
+            </div>
 
-            <a href="https://t.me/@Panha6640" target="_blank" class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-[#229ED9] hover:text-white transition-all transform hover:scale-110">
-                <span class="font-bold text-xs">TG</span>
-            </a>
+            <div>
+              <h3 class="text-white font-bold mb-4 text-base">ទំនាក់ទំនង</h3>
+              <ul class="space-y-3 text-sm">
+                <li class="flex items-center gap-3">
+                  <span class="bg-slate-800 p-2 rounded-full text-orange-500">📞</span>
+                  <span>099 999 333</span>
+                </li>
+                <li class="flex items-center gap-3">
+                  <span class="bg-slate-800 p-2 rounded-full text-orange-500">📧</span>
+                  <span>food_shop04@gmail.com</span>
+                </li>
+              </ul>
+            </div>
 
-            <a href="https://www.tiktok.com/@news_day4" target="_blank" class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-[#000000] hover:text-white transition-all transform hover:scale-110 border border-slate-700">
-                <span class="font-bold text-xs">TT</span>
-            </a>
+            <div>
+              <h3 class="text-white font-bold mb-4 text-base">តាមដានយើង</h3>
+              <div class="flex gap-3">
+                <a href="https://www.facebook.com/profile.php?id=61583997748599" target="_blank" class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white hover:bg-blue-600 transition-colors">
+                  FB
+                </a>
+                <a href="https://t.me/@Panha6640" target="_blank" class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white hover:bg-sky-500 transition-colors">
+                  TG
+                </a>
+                <a href="https://www.tiktok.com/@news_day4" target="_blank" class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white hover:bg-black transition-colors">
+                  TT
+                </a>
+              </div>
+            </div>
 
           </div>
+
+          <div class="border-t border-slate-800 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-slate-600">
+            <p>&copy; 2025 MYFOODSHOP. រក្សាសិទ្ធិគ្រប់យ៉ាង.</p>
+            <div class="flex gap-4 mt-2 md:mt-0">
+              <a href="#" class="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="#" class="hover:text-white transition-colors">Terms of Service</a>
+            </div>
+          </div>
+
         </div>
-      </div>
-      <div class="border-t border-slate-800 mt-10 pt-6 text-center text-slate-500 text-xs">
-        &copy; 2025 MYFOODSHOP.ក្រុមការងារពិសេស
-      </div>
     </footer>
     
   </div>
