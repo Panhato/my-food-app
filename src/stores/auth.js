@@ -7,6 +7,19 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
   const router = useRouter();
 
+  // 🔥 0. បន្ថែមថ្មី៖ អ្នកចាំចាប់ការផ្លាស់ប្តូរ (Listener)
+  // កូដនេះនឹងដំណើរការស្វ័យប្រវត្តិពេលបងចុច Link ពី Email មក
+  supabase.auth.onAuthStateChange((event, session) => {
+    // console.log("Auth Event:", event); // អាចបើកមើលដើម្បីដឹងថាវាដើរឬអត់
+
+    if (session) {
+      // ពេលមាន Session (Login ជាប់) វានឹងដាក់ User ចូល State ភ្លាម
+      user.value = session.user;
+    } else {
+      user.value = null;
+    }
+  });
+
   // 🔥 1. មុខងារទាញយក User ពេល Refresh វេបសាយ
   const loadUser = async () => {
     const { data } = await supabase.auth.getUser();
@@ -23,7 +36,6 @@ export const useAuthStore = defineStore('auth', () => {
     });
 
     if (error) throw error;
-    user.value = data.user;
     return true;
   };
 
@@ -43,15 +55,14 @@ export const useAuthStore = defineStore('auth', () => {
     });
 
     if (error) throw error;
-    user.value = data.user;
     return true;
   };
 
-  // 🔥 4. Update Profile & Password (កែសម្រួលថ្មី)
+  // 🔥 4. Update Profile & Password
   const updateProfile = async (updates) => {
     let payload = {};
 
-    // ប្រសិនបើមាន Password យើងដាក់វាផ្ទាល់ (កុំដាក់ក្នុង data)
+    // ប្រសិនបើមាន Password យើងដាក់វាផ្ទាល់
     if (updates.password) {
         payload = { password: updates.password };
     } else {
@@ -62,13 +73,13 @@ export const useAuthStore = defineStore('auth', () => {
     const { data, error } = await supabase.auth.updateUser(payload);
 
     if (error) throw error;
-    user.value = data.user; 
+    // user.value = data.user; // មិនបាច់ដាក់ក៏បាន ព្រោះ onAuthStateChange នឹងធ្វើឱ្យ
     return true;
   };
 
-  // 🔥 5. មុខងារស្នើសុំដូរលេខកូដ (ភ្លេចពាក្យសម្ងាត់) - បន្ថែមថ្មី
+  // 🔥 5. មុខងារស្នើសុំដូរលេខកូដ (ភ្លេចពាក្យសម្ងាត់)
   const resetPasswordEmail = async (email) => {
-    // ត្រូវប្រាកដថា URL នេះត្រូវនឹង URL របស់បង (localhost ឬ domain ពិត)
+    // ត្រូវប្រាកដថា URL នេះត្រូវនឹង URL របស់បង
     const redirectUrl = window.location.origin + '/update-password';
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -100,7 +111,7 @@ export const useAuthStore = defineStore('auth', () => {
     register, 
     logout, 
     updateProfile,
-    resetPasswordEmail, // 🔥 កុំភ្លេច return ចេញទៅក្រៅ
+    resetPasswordEmail, 
     isAuthenticated, 
     isAdmin 
   };
