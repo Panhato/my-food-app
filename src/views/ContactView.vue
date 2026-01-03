@@ -2,13 +2,13 @@
 import { ref } from 'vue';
 import { supabase } from '../supabase'; 
 
-// 🔥 សូមដាក់ Telegram Bot Token និង Chat ID របស់បងនៅទីនេះ
+// 🔥 Credentials របស់បង (ត្រឹមត្រូវហើយ)
 const TG_BOT_TOKEN = '8253458210:AAG2bggWcLeBEuhwyW0pTMJf0q_dLic6124'; 
 const TG_CHAT_ID = '7309869072';
 
 const form = ref({
   name: '',
-  email: '', // ប្រើសម្រាប់ លេខទូរស័ព្ទ ឬ អ៊ីមែល
+  email: '', 
   message: ''
 });
 
@@ -43,6 +43,24 @@ const sendToTelegram = async (data) => {
   }
 };
 
+// មុខងាររក្សាទុកចូល Supabase (ដាច់ដោយឡែក)
+const saveToSupabase = async (data) => {
+    try {
+        const { error } = await supabase.from('contacts').insert([
+          {
+            name: data.name,
+            contact_info: data.email,
+            message: data.message
+          }
+        ]);
+        if (error) {
+            console.error("Supabase Error (អាចមកពីអត់ទាន់បង្កើត Table 'contacts'):", error.message);
+        }
+    } catch (err) {
+        console.warn("Supabase skipped:", err);
+    }
+};
+
 const submitMessage = async () => {
   if (!form.value.name || !form.value.email || !form.value.message) {
       alert("សូមបំពេញព័ត៌មានឱ្យបានគ្រប់គ្រាន់!");
@@ -52,21 +70,13 @@ const submitMessage = async () => {
   isLoading.value = true;
 
   try {
-    // 1️⃣ បញ្ចូលទិន្នន័យទៅ Supabase (តារាង contacts)
-    const { error } = await supabase.from('contacts').insert([
-      {
-        name: form.value.name,
-        contact_info: form.value.email, // ដាក់ចូល Column contact_info
-        message: form.value.message
-      }
-    ]);
-
-    if (error) throw error;
-
-    // 2️⃣ ផ្ញើទៅ Telegram
+    // 1️⃣ ផ្ញើទៅ Telegram (ជាអាទិភាព)
     await sendToTelegram(form.value);
 
-    // 3️⃣ បង្ហាញជោគជ័យ
+    // 2️⃣ ព្យាយាមរក្សាទុកក្នុង Database (បើបរាជ័យ ក៏មិនអីដែរ)
+    await saveToSupabase(form.value);
+
+    // 3️⃣ បង្ហាញជោគជ័យជានិច្ច
     showSuccessModal.value = true;
     form.value = { name: '', email: '', message: '' }; // Reset Form
     
@@ -77,7 +87,7 @@ const submitMessage = async () => {
 
   } catch (err) {
     console.error(err);
-    alert("មានបញ្ហាក្នុងការផ្ញើសារ! សូមព្យាយាមម្តងទៀត។");
+    alert("មានបញ្ហាប្រព័ន្ធ! ប៉ុន្តែសូមកុំបារម្ភ យើងនឹងព្យាយាមកែសម្រួល។");
   } finally {
     isLoading.value = false;
   }
