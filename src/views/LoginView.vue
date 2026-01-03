@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
-import { useToastStore } from '../stores/toast'; // Use Toast for better alerts
+import { useToastStore } from '../stores/toast'; 
 import { useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
@@ -12,7 +12,7 @@ const router = useRouter();
 const isRegister = ref(false); 
 
 // Form Inputs
-const email = ref(''); // Switched from username to email for Supabase
+const email = ref(''); 
 const password = ref('');
 const confirmPassword = ref(''); // For Register only
 const username = ref(''); // Extra field for Register
@@ -112,6 +112,12 @@ const handleSubmit = async () => {
             <input v-model="confirmPassword" type="password" class="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-orange-500 bg-slate-50 focus:bg-white transition-all font-bold text-slate-700" placeholder="••••••••" />
         </div>
         
+        <div v-if="!isRegister" class="text-right">
+            <router-link to="/forgot-password" class="text-xs font-bold text-slate-400 hover:text-orange-600 transition-colors">
+                ភ្លេចពាក្យសម្ងាត់?
+            </router-link>
+        </div>
+
         <button type="submit" :disabled="isLoading" class="w-full bg-orange-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-orange-200 hover:bg-orange-700 hover:shadow-xl transition-all active:scale-95 text-lg flex items-center justify-center gap-2 mt-6">
             <span v-if="isLoading" class="animate-spin">⏳</span>
             {{ isRegister ? 'ចុះឈ្មោះ (Sign Up)' : 'ចូលប្រើ (Login)' }}
