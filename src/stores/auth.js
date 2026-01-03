@@ -7,20 +7,16 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
   const router = useRouter();
 
-  // 🔥 0. បន្ថែមថ្មី៖ អ្នកចាំចាប់ការផ្លាស់ប្តូរ (Listener)
-  // កូដនេះនឹងដំណើរការស្វ័យប្រវត្តិពេលបងចុច Link ពី Email មក
+  // 🔥 0. Listener: ចាំចាប់ការផ្លាស់ប្តូរស្ថានភាព User (សំខាន់សម្រាប់ Password Reset)
   supabase.auth.onAuthStateChange((event, session) => {
-    // console.log("Auth Event:", event); // អាចបើកមើលដើម្បីដឹងថាវាដើរឬអត់
-
     if (session) {
-      // ពេលមាន Session (Login ជាប់) វានឹងដាក់ User ចូល State ភ្លាម
       user.value = session.user;
     } else {
       user.value = null;
     }
   });
 
-  // 🔥 1. មុខងារទាញយក User ពេល Refresh វេបសាយ
+  // 🔥 1. Load User ពេល Refresh
   const loadUser = async () => {
     const { data } = await supabase.auth.getUser();
     if (data.user) {
@@ -39,7 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     return true;
   };
 
-  // 🔥 3. Register
+  // 🔥 3. Register (កែសម្រួលឱ្យ Auto Login)
   const register = async (email, password, username, phone) => {
     const { data, error } = await supabase.auth.signUp({
       email: email,
@@ -55,6 +51,13 @@ export const useAuthStore = defineStore('auth', () => {
     });
 
     if (error) throw error;
+
+    // ✨ បន្ថែមថ្មី៖ បើ Supabase បោះ Session មក (មានន័យថាបានបិទ Confirm Email ហើយ)
+    // យើងដាក់ User ចូល State តែម្តង ដើម្បីកុំឱ្យគេ Login ម្តងទៀត
+    if (data.session) {
+      user.value = data.user;
+    }
+
     return true;
   };
 
@@ -62,24 +65,21 @@ export const useAuthStore = defineStore('auth', () => {
   const updateProfile = async (updates) => {
     let payload = {};
 
-    // ប្រសិនបើមាន Password យើងដាក់វាផ្ទាល់
     if (updates.password) {
         payload = { password: updates.password };
     } else {
-        // ប្រសិនបើជាព័ត៌មានផ្សេងៗ (ឈ្មោះ, រូបភាព) ដាក់ចូល data
         payload = { data: updates };
     }
 
     const { data, error } = await supabase.auth.updateUser(payload);
 
     if (error) throw error;
-    // user.value = data.user; // មិនបាច់ដាក់ក៏បាន ព្រោះ onAuthStateChange នឹងធ្វើឱ្យ
+    // user.value = data.user; // មិនបាច់ដាក់ក៏បាន onAuthStateChange ធ្វើឱ្យហើយ
     return true;
   };
 
-  // 🔥 5. មុខងារស្នើសុំដូរលេខកូដ (ភ្លេចពាក្យសម្ងាត់)
+  // 🔥 5. Reset Password (ភ្លេចពាក្យសម្ងាត់)
   const resetPasswordEmail = async (email) => {
-    // ត្រូវប្រាកដថា URL នេះត្រូវនឹង URL របស់បង
     const redirectUrl = window.location.origin + '/update-password';
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
