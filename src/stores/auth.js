@@ -97,20 +97,19 @@ export const useAuthStore = defineStore('auth', () => {
   // 🔥 6. Logout (កែសម្រួលឱ្យខ្លាំង - Robust Logout)
   const logout = async () => {
     try {
-      // ព្យាយាមប្រាប់ Supabase ឱ្យ Logout
+      // ព្យាយាមប្រាប់ Supabase ឱ្យ Logout (Network Request)
       await supabase.auth.signOut();
     } catch (error) {
       console.error("Logout error (Supabase):", error);
     } finally {
-      // មិនថា Supabase ជោគជ័យ ឬបរាជ័យ (ដោយសារ Antivirus/Internet)
-      // យើងត្រូវតែសម្អាតទិន្នន័យនៅក្នុង App ជានិច្ច
+      // ដំណើរការជានិច្ច ទោះបី Supabase ឆ្លើយតប ឬអត់
+      // 1. សម្អាតទិន្នន័យ User ក្នុងកម្មវិធី
       user.value = null;
       
-      // សម្អាត LocalStorage ទាំងអស់ (ដើម្បីការពារកុំឱ្យជាប់ទិន្នន័យចាស់)
+      // 2. សម្អាត LocalStorage (កន្ត្រក, ទីតាំង, Token ចាស់ៗ)
       localStorage.clear(); 
 
-      // ប្រើ window.location.href ដើម្បី Force Redirect ទៅ Login
-      // ការធ្វើបែបនេះល្អជាង router.push ព្រោះវាជួយ Reset State ទាំងអស់ក្នុង App
+      // 3. បញ្ជាឱ្យ Browser ទៅកាន់ទំព័រ Login ភ្លាមៗ (Force Redirect)
       window.location.href = '/login'; 
     }
   };

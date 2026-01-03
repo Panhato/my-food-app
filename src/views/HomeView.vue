@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { supabase } from '../supabase'; 
-import { RouterLink, useRouter } from 'vue-router'; 
+import { useRouter } from 'vue-router'; 
 import { useCartStore } from '../stores/cart';
 
 // Import Swiper
@@ -20,22 +20,31 @@ const banners = ref([]);
 const chefs = ref([]);
 const products = ref([]);
 
+// 🔥 1. Fetch Banners (មាន Fallback)
 const fetchBanners = async () => {
-  const { data } = await supabase.from('banners').select('*');
-  if (data && data.length > 0) {
-      banners.value = data;
-  } else {
-      // 🔥 Dummy Data for Banners (Fallback)
+  try {
+      const { data, error } = await supabase.from('banners').select('*');
+      
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+          banners.value = data;
+      } else {
+          throw new Error("No data"); // បោះ Error ដើម្បីឱ្យចូល catch
+      }
+  } catch (err) {
+      console.log("Using Dummy Banners");
+      // Fallback Data
       banners.value = [
           { 
             id: 1, 
-            image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000&auto=format&fit=crop', 
+            image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1000&q=80', 
             title: 'រសជាតិពិត', 
             subtitle: 'ម្ហូបខ្មែរ និងបរទេស' 
           },
           { 
             id: 2, 
-            image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1000&auto=format&fit=crop', 
+            image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1000&q=80', 
             title: 'សេវារហ័ស', 
             subtitle: 'ដឹកជញ្ជូនគ្រប់ទីកន្លែង' 
           }
@@ -43,16 +52,25 @@ const fetchBanners = async () => {
   }
 };
 
+// 🔥 2. Fetch Chefs (មាន Fallback)
 const fetchChefs = async () => {
-  const { data } = await supabase.from('chefs').select('*');
-  if (data && data.length > 0) {
-      chefs.value = data;
-  } else {
-      // 🔥 Dummy Data for Chef (Fallback)
+  try {
+      const { data, error } = await supabase.from('chefs').select('*');
+      
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+          chefs.value = data;
+      } else {
+          throw new Error("No data");
+      }
+  } catch (err) {
+      console.log("Using Dummy Chefs");
+      // Fallback Data
       chefs.value = [
           { 
             id: 1, 
-            image: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?q=80&w=1000&auto=format&fit=crop', 
+            image: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&w=800&q=80', 
             name: 'Master Chef', 
             bio: 'Expert in Asian Cuisine with over 10 years of experience.' 
           }
@@ -60,9 +78,29 @@ const fetchChefs = async () => {
   }
 };
 
+// 🔥 3. Fetch Products (មាន Fallback - សំខាន់!)
 const fetchProducts = async () => {
-  const { data } = await supabase.from('products').select('*');
-  if (data) products.value = data;
+  try {
+      const { data, error } = await supabase.from('products').select('*');
+      
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+          products.value = data;
+      } else {
+          throw new Error("No data");
+      }
+  } catch (err) {
+      console.log("Using Dummy Products");
+      // Fallback Data (ដាក់ឱ្យច្រើនបន្តិចដើម្បីឱ្យស្អាត)
+      products.value = [
+          { id: 1, title: 'បាយស្រូបសាច់ជ្រូក', category: 'អាហារពេលព្រឹក', price: 2.5, image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' },
+          { id: 2, title: 'គុយទាវភ្នំពេញ', category: 'ពេញនិយម', price: 3.5, image: 'https://images.unsplash.com/photo-1555126634-323283e090fa' },
+          { id: 3, title: 'Burger Set', category: 'Fast Food', price: 5.0, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd' },
+          { id: 4, title: 'Pizza Special', category: 'Fast Food', price: 8.0, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38' },
+          { id: 5, title: 'Spaghetti', category: 'Italian', price: 6.0, image: 'https://images.unsplash.com/photo-1551183053-bf91b1dca034' }
+      ];
+  }
 };
 
 // Limit to 15 items

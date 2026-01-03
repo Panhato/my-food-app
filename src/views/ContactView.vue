@@ -1,15 +1,47 @@
 <script setup>
 import { ref } from 'vue';
-import axios from 'axios';
+import { supabase } from '../supabase'; 
+
+// 🔥 សូមដាក់ Telegram Bot Token និង Chat ID របស់បងនៅទីនេះ
+const TG_BOT_TOKEN = '8253458210:AAG2bggWcLeBEuhwyW0pTMJf0q_dLic6124'; 
+const TG_CHAT_ID = '7309869072';
 
 const form = ref({
   name: '',
-  email: '',
+  email: '', // ប្រើសម្រាប់ លេខទូរស័ព្ទ ឬ អ៊ីមែល
   message: ''
 });
 
 const showSuccessModal = ref(false);
-const API_URL = 'https://my-food-shop.rf.gd/api';
+const isLoading = ref(false);
+
+// មុខងារផ្ញើទៅ Telegram
+const sendToTelegram = async (data) => {
+  const text = `
+📩 <b>មានសារថ្មីពីអតិថិជន (Contact Us)!</b>
+--------------------------------
+👤 <b>ឈ្មោះ:</b> ${data.name}
+📞 <b>ទំនាក់ទំនង:</b> ${data.email}
+💬 <b>សារ:</b> ${data.message}
+--------------------------------
+⏰ <i>${new Date().toLocaleString('km-KH')}</i>
+  `;
+
+  try {
+    const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TG_CHAT_ID,
+        text: text,
+        parse_mode: 'HTML'
+      })
+    });
+  } catch (error) {
+    console.error('Telegram Error:', error);
+  }
+};
 
 const submitMessage = async () => {
   if (!form.value.name || !form.value.email || !form.value.message) {
@@ -17,24 +49,37 @@ const submitMessage = async () => {
       return;
   }
 
-  try {
-    const res = await axios.post(`${API_URL}/submit-contact.php`, form.value);
-    
-    if (res.data.message === "Success") {
-      showSuccessModal.value = true;
-      form.value = { name: '', email: '', message: '' }; // Reset Form
-      
-      // បិទផ្ទាំងវិញដោយស្វ័យប្រវត្តិក្រោយ 4 វិនាទី
-      setTimeout(() => {
-        showSuccessModal.value = false;
-      }, 4000);
+  isLoading.value = true;
 
-    } else {
-      alert("មានបញ្ហាក្នុងការផ្ញើ! សូមព្យាយាមម្តងទៀត។");
-    }
-  } catch (error) {
-    console.error(error);
-    alert("មានបញ្ហាប្រព័ន្ធ!");
+  try {
+    // 1️⃣ បញ្ចូលទិន្នន័យទៅ Supabase (តារាង contacts)
+    const { error } = await supabase.from('contacts').insert([
+      {
+        name: form.value.name,
+        contact_info: form.value.email, // ដាក់ចូល Column contact_info
+        message: form.value.message
+      }
+    ]);
+
+    if (error) throw error;
+
+    // 2️⃣ ផ្ញើទៅ Telegram
+    await sendToTelegram(form.value);
+
+    // 3️⃣ បង្ហាញជោគជ័យ
+    showSuccessModal.value = true;
+    form.value = { name: '', email: '', message: '' }; // Reset Form
+    
+    // បិទផ្ទាំងវិញដោយស្វ័យប្រវត្តិក្រោយ 4 វិនាទី
+    setTimeout(() => {
+      showSuccessModal.value = false;
+    }, 4000);
+
+  } catch (err) {
+    console.error(err);
+    alert("មានបញ្ហាក្នុងការផ្ញើសារ! សូមព្យាយាមម្តងទៀត។");
+  } finally {
+    isLoading.value = false;
   }
 };
 </script>
@@ -118,9 +163,10 @@ const submitMessage = async () => {
               <textarea v-model="form.message" rows="4" placeholder="សរសេរអ្វីដែលអ្នកចង់ប្រាប់យើង..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-bold text-slate-700 resize-none" required></textarea>
             </div>
 
-            <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-200 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2">
-              <span>ផ្ញើសារឥឡូវនេះ</span>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+            <button type="submit" :disabled="isLoading" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-200 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+              <span v-if="isLoading">កំពុងផ្ញើ...</span>
+              <span v-else>ផ្ញើសារឥឡូវនេះ</span>
+              <svg v-if="!isLoading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0 1 21.485 12 59.77 59.77 0 0 1 3.27 20.876L5.999 12zm0 0h7.5" />
               </svg>
             </button>
