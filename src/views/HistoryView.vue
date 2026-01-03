@@ -8,23 +8,21 @@ const authStore = useAuthStore();
 const orderStore = useOrderStore();
 const router = useRouter();
 
-// ពេលបើកទំព័រភ្លាម ឱ្យទាញយក Order របស់ User ហ្នឹងមក
 onMounted(() => {
   if (authStore.user) {
     orderStore.fetchMyOrders();
   }
 });
 
-// Helper Function: សម្រាប់ប្តូរពាក្យ និងពណ៌
 const getStatusInfo = (status) => {
     switch(status) {
-        case 'pending': return { text: 'រង់ចាំ', color: 'text-yellow-600 bg-yellow-100', icon: '⏳', percent: '25%' };
-        case 'accepted': return { text: 'បានទទួល', color: 'text-blue-600 bg-blue-100', icon: '✅', percent: '40%' };
-        case 'cooking': return { text: 'កំពុងធ្វើ', color: 'text-orange-600 bg-orange-100', icon: '👨‍🍳', percent: '60%' };
-        case 'delivering': return { text: 'កំពុងដឹក', color: 'text-purple-600 bg-purple-100', icon: '🛵', percent: '85%' };
-        case 'completed': return { text: 'បានទទួលហើយ', color: 'text-green-600 bg-green-100', icon: '🎉', percent: '100%' };
-        case 'rejected': return { text: 'បដិសេធ', color: 'text-red-600 bg-red-100', icon: '❌', percent: '0%' };
-        default: return { text: 'រង់ចាំ', color: 'text-gray-600 bg-gray-100', icon: '...', percent: '10%' };
+        case 'pending': return { text: 'រង់ចាំ', color: 'text-yellow-600 bg-yellow-50 border-yellow-100', icon: '⏳', percent: '25%' };
+        case 'accepted': return { text: 'បានទទួល', color: 'text-blue-600 bg-blue-50 border-blue-100', icon: '👨‍🍳', percent: '50%' };
+        case 'cooking': return { text: 'កំពុងចម្អិន', color: 'text-orange-600 bg-orange-50 border-orange-100', icon: '🔥', percent: '75%' };
+        case 'delivering': return { text: 'កំពុងដឹក', color: 'text-purple-600 bg-purple-50 border-purple-100', icon: '🛵', percent: '90%' };
+        case 'completed': return { text: 'បានទទួល', color: 'text-green-600 bg-green-50 border-green-100', icon: '🎉', percent: '100%' };
+        case 'rejected': return { text: 'បដិសេធ', color: 'text-red-600 bg-red-50 border-red-100', icon: '❌', percent: '0%' };
+        default: return { text: 'រង់ចាំ', color: 'text-gray-600 bg-gray-50 border-gray-100', icon: '...', percent: '10%' };
     }
 };
 
@@ -35,18 +33,16 @@ const formatPrice = (val) => {
     return '$' + num.toFixed(2);
 };
 
-const formatDate = (date) => new Date(date).toLocaleString('km-KH');
+const formatDate = (date) => new Date(date).toLocaleString('km-KH', { 
+    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+});
 
-// Function សម្រាប់បង្ហាញឈ្មោះម្ហូប (កែសម្រួលរួចរាល់)
-const formatItems = (items) => {
+// 🔥 Function ថ្មី៖ សម្រាប់បំបែក Items ជា Array ដើម្បីងាយស្រួលបង្ហាញ
+const parseItems = (items) => {
     try {
-        // ពិនិត្យមើលថា items ជា string ឬ array ព្រោះ Supabase ពេលខ្លះបោះមកខុសគ្នា
         const parsed = typeof items === 'string' ? JSON.parse(items) : items;
-        if (!Array.isArray(parsed)) return '...';
-        
-        // 🔥 កែពី name/qty ទៅជា title/quantity វិញ
-        return parsed.map(i => `${i.title} (x${i.quantity})`).join(', ');
-    } catch(e) { return '...'; }
+        return Array.isArray(parsed) ? parsed : [];
+    } catch(e) { return []; }
 };
 
 const handleLoginRedirect = () => {
@@ -55,87 +51,102 @@ const handleLoginRedirect = () => {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto p-4 md:p-8 font-sans min-h-screen bg-gray-50/50 pt-24">
+  <div class="max-w-2xl mx-auto p-4 md:p-6 font-sans min-h-screen bg-gray-50 pt-24 pb-24">
     
-    <div v-if="!authStore.user" class="flex flex-col items-center justify-center pt-10">
-        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 w-full max-w-sm text-center">
-            <span class="text-5xl mb-4 block">🔒</span>
+    <div v-if="authStore.user" class="flex justify-between items-end mb-8 px-2">
+        <div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">ប្រវត្តិការកុម្ម៉ង់ 📜</h1>
+            <p class="text-sm text-gray-500 mt-1 font-medium">សួស្តី, <span class="text-orange-600">{{ authStore.user.user_metadata?.username || 'អតិថិជន' }}</span></p>
+        </div>
+        <button @click="orderStore.fetchMyOrders()" class="bg-white p-3 rounded-full shadow-sm border border-gray-100 text-gray-500 hover:text-orange-600 hover:shadow-md transition-all active:scale-95">
+            🔄
+        </button>
+    </div>
+
+    <div v-if="orderStore.isLoading" class="space-y-4">
+        <div v-for="n in 3" :key="n" class="bg-white h-40 rounded-3xl animate-pulse"></div>
+    </div>
+
+    <div v-else-if="!authStore.user" class="flex flex-col items-center justify-center pt-20 text-center">
+        <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-orange-100/50 border border-orange-50 w-full max-w-sm">
+            <span class="text-6xl mb-4 block">🔐</span>
             <h2 class="text-xl font-black text-slate-800 mb-2">សូមចូលគណនី</h2>
-            <p class="text-gray-400 text-sm mb-6">អ្នកត្រូវចូលគណនីជាមុនសិន ដើម្បីមើលប្រវត្តិការកុម្ម៉ង់របស់អ្នក។</p>
-            
-            <button @click="handleLoginRedirect" class="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-200 active:scale-95">
+            <p class="text-gray-400 text-sm mb-6 px-4">ដើម្បីមើលប្រវត្តិការកុម្ម៉ង់ និងតាមដានម្ហូបរបស់អ្នក។</p>
+            <button @click="handleLoginRedirect" class="w-full py-3.5 bg-orange-600 text-white rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-200">
                 ចូលគណនី (Login)
             </button>
         </div>
     </div>
 
-    <div v-else>
-        <div class="flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-            <div>
-                <h1 class="text-xl font-black text-slate-800">ប្រវត្តិការកុម្ម៉ង់ 📦</h1>
-                <p class="text-xs text-gray-500 mt-1">គណនី: <span class="font-bold text-orange-600">{{ authStore.user.email }}</span></p>
-            </div>
-            <div class="flex gap-2">
-                <button @click="orderStore.fetchMyOrders()" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 text-gray-500 border flex items-center gap-1 px-3 font-bold text-sm">
-                    🔄 Reload
-                </button>
-            </div>
-        </div>
-
-        <div v-if="orderStore.isLoading" class="text-center py-20">
-            <p class="animate-pulse text-gray-400 font-bold">កំពុងទាញទិន្នន័យ...</p>
-        </div>
-
-        <div v-else-if="orderStore.orders.length === 0" class="text-center py-20 bg-white rounded-[2rem] border border-dashed border-gray-300">
-           <span class="text-5xl mb-4 block opacity-50">🍽️</span>
-           <p class="text-gray-400 font-bold">អ្នកមិនទាន់បានកុម្ម៉ង់អ្វីទេ</p>
-           <router-link to="/menu" class="inline-block mt-4 text-orange-600 font-bold hover:underline">ទៅកុម្ម៉ង់ម្ហូប →</router-link>
-        </div>
-
-        <div v-else class="space-y-6">
-          <div v-for="order in orderStore.orders" :key="order.id" class="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all">
-            
-            <div class="flex justify-between items-start mb-4">
-                <div class="flex items-center gap-3">
-                    <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-xl text-sm font-bold">#{{ order.id }}</span>
-                    <span class="text-xs text-gray-400">{{ formatDate(order.created_at) }}</span>
-                </div>
-                
-                <div class="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide"
-                     :class="getStatusInfo(order.status).color">
-                    <span>{{ getStatusInfo(order.status).icon }}</span>
-                    <span>{{ getStatusInfo(order.status).text }}</span>
-                </div>
-            </div>
-
-            <div class="mb-6" v-if="order.status !== 'rejected'">
-                <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden relative">
-                    <div class="h-full bg-orange-500 transition-all duration-1000 ease-out relative" 
-                         :style="{ width: getStatusInfo(order.status).percent }">
-                         <div class="absolute inset-0 bg-white/30 animate-pulse"></div>
-                    </div>
-                </div>
-                <div class="flex justify-between text-[10px] text-gray-400 mt-1 font-bold uppercase tracking-wider">
-                    <span>បញ្ជាទិញ</span>
-                    <span>កំពុងធ្វើ</span>
-                    <span>កំពុងដឹក</span>
-                    <span>បានទទួល</span>
-                </div>
-            </div>
-
-            <div class="mb-4 bg-gray-50 p-4 rounded-xl border border-gray-50">
-                <p class="text-sm font-medium text-gray-600 leading-relaxed">
-                    {{ formatItems(order.items) }}
-                </p>
-            </div>
-
-            <div class="flex justify-between items-center">
-                 <span class="text-xs font-bold text-gray-400">សរុបទឹកប្រាក់</span>
-                 <span class="text-2xl font-black text-slate-800">{{ formatPrice(order.total_price) }}</span>
-            </div>
-          </div>
-        </div>
+    <div v-else-if="orderStore.orders.length === 0" class="flex flex-col items-center justify-center pt-20 text-center">
+         <div class="text-6xl mb-4 opacity-80 grayscale-[30%]">🍔</div>
+         <h3 class="text-xl font-black text-slate-700">មិនទាន់មានការកុម្ម៉ង់ទេ</h3>
+         <p class="text-gray-400 text-sm mb-6">ឃ្លានហើយមែនទេ? កុម្ម៉ង់ឥឡូវនេះ!</p>
+         <router-link to="/menu" class="px-8 py-3 bg-slate-800 text-white rounded-2xl font-bold hover:bg-orange-600 transition-colors shadow-lg">
+            ទៅម៉ឺនុយម្ហូប 🍔
+         </router-link>
     </div>
 
+    <div v-else class="space-y-6">
+      <div v-for="order in orderStore.orders" :key="order.id" 
+           class="bg-white rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden relative group hover:border-orange-200 transition-all duration-300">
+        
+        <div class="flex justify-between items-start mb-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-slate-100 w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-bold text-slate-600">
+                    📦
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Order #{{ order.id }}</p>
+                    <p class="text-xs text-slate-500 font-bold">{{ formatDate(order.created_at) }}</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-black uppercase tracking-wide shadow-sm"
+                 :class="getStatusInfo(order.status).color">
+                <span class="text-sm">{{ getStatusInfo(order.status).icon }}</span>
+                <span>{{ getStatusInfo(order.status).text }}</span>
+            </div>
+        </div>
+
+        <div class="mb-5 px-1" v-if="order.status !== 'rejected'">
+            <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-1000 relative" 
+                     :style="{ width: getStatusInfo(order.status).percent }">
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-3 mb-5">
+            <div v-for="(item, index) in parseItems(order.items)" :key="index" 
+                 class="flex justify-between items-center py-2 border-b border-dashed border-gray-50 last:border-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden flex-shrink-0">
+                        <img v-if="item.image" :src="item.image" class="w-full h-full object-cover" />
+                        <span v-else class="w-full h-full flex items-center justify-center text-xl">🍲</span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-700 line-clamp-1">{{ item.title }}</p>
+                        <p class="text-xs text-gray-400 font-bold">ចំនួន: x{{ item.quantity }}</p>
+                    </div>
+                </div>
+                <p class="text-sm font-bold text-slate-600">{{ formatPrice(item.price) }}</p>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+             <div>
+                <p class="text-xs font-bold text-gray-400 uppercase">សរុបទឹកប្រាក់</p>
+                <p class="text-2xl font-black text-slate-800 tracking-tight">{{ formatPrice(order.total_price) }}</p>
+             </div>
+             
+             <button v-if="order.status === 'completed'" class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl hover:bg-orange-600 transition-colors">
+                កម្ម៉ង់ម្តងទៀត
+             </button>
+        </div>
+
+      </div>
+    </div>
+    
   </div>
 </template>
