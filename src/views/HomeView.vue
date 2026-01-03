@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { supabase } from '../supabase'; 
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router'; // 🔥 Import useRouter
 import { useCartStore } from '../stores/cart';
 
 // Import Swiper
@@ -13,6 +13,7 @@ import { Autoplay, Pagination, Navigation } from 'swiper/modules';
 
 const modules = [Autoplay, Pagination, Navigation];
 const cartStore = useCartStore();
+const router = useRouter(); // 🔥 Initialize Router
 
 // State
 const banners = ref([]);
@@ -34,7 +35,7 @@ const fetchProducts = async () => {
   if (data) products.value = data;
 };
 
-// 🔥 Limit to 15 items (3 rows of 5)
+// Limit to 15 items
 const popularProducts = computed(() => {
   return products.value.slice(0, 15);
 });
@@ -44,6 +45,11 @@ const formatPrice = (value) => {
   if (!val && val !== 0) return '$0.00';
   if (val > 100) return new Intl.NumberFormat('km-KH').format(val) + ' ៛';
   return '$' + val.toFixed(2);
+};
+
+// 🔥 Function to navigate to Menu page
+const goToMenu = () => {
+    router.push('/menu');
 };
 
 onMounted(() => {
@@ -56,7 +62,7 @@ onMounted(() => {
 <template>
   <div class="font-sans min-h-screen bg-[#FDFDFD] pb-20">
     
-    <div class="w-full h-[280px] md:h-[380px] relative overflow-hidden bg-gray-100">
+    <div class="w-full h-[160px] md:h-[260px] relative overflow-hidden bg-gray-100">
         <Swiper
             :modules="modules"
             :slides-per-view="1"
@@ -71,13 +77,13 @@ onMounted(() => {
                     
                     <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex flex-col justify-center px-8 md:px-20">
                         <div class="max-w-2xl animate-fade-in-up">
-                            <h2 class="text-3xl md:text-5xl font-black text-white mb-3 drop-shadow-lg leading-tight">
+                            <h2 class="text-2xl md:text-4xl font-black text-white mb-2 drop-shadow-lg leading-tight">
                                 {{ banner.title }}
                             </h2>
-                            <p class="text-base md:text-xl text-white/90 font-medium mb-6 line-clamp-2">
+                            <p class="text-sm md:text-lg text-white/90 font-medium mb-4 line-clamp-2">
                                 {{ banner.subtitle }}
                             </p>
-                            <RouterLink to="/menu" class="inline-block px-8 py-3 bg-orange-600 text-white font-bold rounded-full hover:bg-orange-700 transition-all shadow-lg hover:shadow-orange-500/30 transform hover:-translate-y-1">
+                            <RouterLink to="/menu" class="inline-block px-6 py-2 bg-orange-600 text-white text-sm font-bold rounded-full hover:bg-orange-700 transition-all shadow-lg hover:shadow-orange-500/30 transform hover:-translate-y-1">
                                 កម្ម៉ង់ឥឡូវនេះ
                             </RouterLink>
                         </div>
@@ -87,23 +93,23 @@ onMounted(() => {
         </Swiper>
     </div>
 
-    <div class="max-w-[1600px] mx-auto px-4 md:px-8 py-10">
+    <div class="max-w-[1600px] mx-auto px-4 md:px-8 py-8">
         
-        <div class="flex justify-between items-end mb-8">
+        <div class="flex justify-between items-end mb-6">
             <div>
-                <p class="text-orange-600 font-bold mb-1 uppercase tracking-wider text-sm">ណែនាំសម្រាប់លោកអ្នក</p>
-                <h2 class="text-3xl md:text-4xl font-black text-slate-800 flex items-center gap-2">
+                <p class="text-orange-600 font-bold mb-1 uppercase tracking-wider text-xs">ណែនាំសម្រាប់លោកអ្នក</p>
+                <h2 class="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-2">
                     🔥 ម្ហូបពេញនិយមប្រចាំថ្ងៃ
                 </h2>
             </div>
-            <RouterLink to="/menu" class="hidden md:flex items-center gap-2 text-slate-500 font-bold hover:text-orange-600 transition-colors bg-white px-5 py-2.5 rounded-full border border-slate-200 hover:border-orange-200 shadow-sm">
-                មើលទាំងអស់ <span class="text-xl">→</span>
+            <RouterLink to="/menu" class="hidden md:flex items-center gap-2 text-slate-500 font-bold hover:text-orange-600 transition-colors bg-white px-4 py-2 rounded-full border border-slate-200 hover:border-orange-200 shadow-sm text-sm">
+                មើលទាំងអស់ <span class="text-lg">→</span>
             </RouterLink>
         </div>
 
-        <div class="flex flex-col lg:flex-row gap-8 items-start">
+        <div class="flex flex-col lg:flex-row gap-6 items-start">
             
-            <div class="w-full lg:w-[280px] flex-shrink-0">
+            <div class="w-full lg:w-[260px] flex-shrink-0">
                 <div class="bg-orange-600 rounded-[2rem] relative overflow-hidden shadow-xl shadow-orange-200 h-auto border-4 border-white">
                     <Swiper
                         v-if="chefs.length > 0"
@@ -114,7 +120,8 @@ onMounted(() => {
                         class="w-full"
                     >
                         <SwiperSlide v-for="chef in chefs" :key="chef.id">
-                            <div class="relative w-full aspect-[3/4]"> <img :src="chef.image" class="w-full h-full object-cover" />
+                            <div class="relative w-full aspect-[3/4]"> 
+                                <img :src="chef.image" class="w-full h-full object-cover" />
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-6 text-white text-center pb-8">
                                     <span class="text-orange-400 font-bold tracking-widest text-xs mb-1">MASTER CHEF</span>
                                     <h3 class="text-xl font-black mb-1 leading-tight">{{ chef.name }}</h3>
@@ -137,9 +144,10 @@ onMounted(() => {
                     <p class="text-gray-400">មិនទាន់មានទិន្នន័យម្ហូប</p>
                 </div>
 
-                <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     <div v-for="food in popularProducts" :key="food.id" 
-                         class="bg-white rounded-[2rem] shadow-sm border border-gray-50 overflow-hidden group flex flex-col hover:shadow-xl hover:shadow-orange-100 transition-all duration-300 cursor-pointer h-full relative">
+                         @click="goToMenu"
+                         class="bg-white rounded-[2rem] shadow-sm border border-gray-50 overflow-hidden group flex flex-col hover:shadow-xl hover:shadow-orange-100 transition-all duration-300 cursor-pointer h-full relative transform hover:-translate-y-1">
                         
                         <div class="relative aspect-square overflow-hidden m-2 rounded-[1.5rem]">
                             <img :src="food.image" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
@@ -152,11 +160,8 @@ onMounted(() => {
                             </h3>
                             <p class="text-[10px] text-gray-400 line-clamp-1 mb-2">{{ food.category }}</p>
                             
-                            <div class="flex justify-between items-center mt-auto pt-2 border-t border-dashed border-gray-100">
-                                <span class="text-sm font-black text-slate-800">{{ formatPrice(food.price) }}</span>
-                                <button @click.prevent="cartStore.addToCart(food)" class="w-7 h-7 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all text-sm font-bold">
-                                    +
-                                </button>
+                            <div class="mt-auto pt-2 border-t border-dashed border-gray-100">
+                                <span class="text-sm font-black text-orange-600">{{ formatPrice(food.price) }}</span>
                             </div>
                         </div>
                     </div>
