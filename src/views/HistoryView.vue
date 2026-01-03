@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted } from 'vue';
-import { useAuthStore } from '../stores/auth'; // ហៅ Auth Store
-import { useOrderStore } from '../stores/order'; // ហៅ Order Store
+import { useAuthStore } from '../stores/auth';
+import { useOrderStore } from '../stores/order';
 import { useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
@@ -28,16 +28,24 @@ const getStatusInfo = (status) => {
     }
 };
 
-const formatPrice = (val) => '$' + parseFloat(val).toFixed(2);
+const formatPrice = (val) => {
+    let num = parseFloat(val);
+    if (isNaN(num)) return '$0.00';
+    if (num > 100) return new Intl.NumberFormat('km-KH').format(num) + ' ៛';
+    return '$' + num.toFixed(2);
+};
+
 const formatDate = (date) => new Date(date).toLocaleString('km-KH');
 
-// Function សម្រាប់បង្ហាញឈ្មោះម្ហូប
+// Function សម្រាប់បង្ហាញឈ្មោះម្ហូប (កែសម្រួលរួចរាល់)
 const formatItems = (items) => {
     try {
         // ពិនិត្យមើលថា items ជា string ឬ array ព្រោះ Supabase ពេលខ្លះបោះមកខុសគ្នា
         const parsed = typeof items === 'string' ? JSON.parse(items) : items;
         if (!Array.isArray(parsed)) return '...';
-        return parsed.map(i => `${i.name} (x${i.qty})`).join(', ');
+        
+        // 🔥 កែពី name/qty ទៅជា title/quantity វិញ
+        return parsed.map(i => `${i.title} (x${i.quantity})`).join(', ');
     } catch(e) { return '...'; }
 };
 
@@ -68,7 +76,7 @@ const handleLoginRedirect = () => {
                 <p class="text-xs text-gray-500 mt-1">គណនី: <span class="font-bold text-orange-600">{{ authStore.user.email }}</span></p>
             </div>
             <div class="flex gap-2">
-                <button @click="orderStore.fetchMyOrders()" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 text-gray-500 border">
+                <button @click="orderStore.fetchMyOrders()" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 text-gray-500 border flex items-center gap-1 px-3 font-bold text-sm">
                     🔄 Reload
                 </button>
             </div>
