@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { supabase } from '../supabase'; 
 
-// 🔥 Credentials របស់បង (ត្រឹមត្រូវហើយ)
+// 🔥 Credentials
 const TG_BOT_TOKEN = '8253458210:AAG2bggWcLeBEuhwyW0pTMJf0q_dLic6124'; 
 const TG_CHAT_ID = '7309869072';
 
@@ -18,7 +18,7 @@ const isLoading = ref(false);
 // មុខងារផ្ញើទៅ Telegram
 const sendToTelegram = async (data) => {
   const text = `
-📩 <b>មានសារថ្មីពីអតិថិជន (Contact Us)!</b>
+📩 <b>សារថ្មី (Contact Us)</b>
 --------------------------------
 👤 <b>ឈ្មោះ:</b> ${data.name}
 📞 <b>ទំនាក់ទំនង:</b> ${data.email}
@@ -43,7 +43,7 @@ const sendToTelegram = async (data) => {
   }
 };
 
-// មុខងាររក្សាទុកចូល Supabase (ដាច់ដោយឡែក)
+// មុខងាររក្សាទុកចូល Supabase
 const saveToSupabase = async (data) => {
     try {
         const { error } = await supabase.from('contacts').insert([
@@ -53,9 +53,7 @@ const saveToSupabase = async (data) => {
             message: data.message
           }
         ]);
-        if (error) {
-            console.error("Supabase Error (អាចមកពីអត់ទាន់បង្កើត Table 'contacts'):", error.message);
-        }
+        if (error) console.warn("Supabase Error:", error.message);
     } catch (err) {
         console.warn("Supabase skipped:", err);
     }
@@ -70,24 +68,23 @@ const submitMessage = async () => {
   isLoading.value = true;
 
   try {
-    // 1️⃣ ផ្ញើទៅ Telegram (ជាអាទិភាព)
+    // 1. ផ្ញើទៅ Telegram
     await sendToTelegram(form.value);
 
-    // 2️⃣ ព្យាយាមរក្សាទុកក្នុង Database (បើបរាជ័យ ក៏មិនអីដែរ)
+    // 2. រក្សាទុកក្នុង Database
     await saveToSupabase(form.value);
 
-    // 3️⃣ បង្ហាញជោគជ័យជានិច្ច
+    // 3. បង្ហាញជោគជ័យ
     showSuccessModal.value = true;
     form.value = { name: '', email: '', message: '' }; // Reset Form
     
-    // បិទផ្ទាំងវិញដោយស្វ័យប្រវត្តិក្រោយ 4 វិនាទី
     setTimeout(() => {
       showSuccessModal.value = false;
     }, 4000);
 
   } catch (err) {
     console.error(err);
-    alert("មានបញ្ហាប្រព័ន្ធ! ប៉ុន្តែសូមកុំបារម្ភ យើងនឹងព្យាយាមកែសម្រួល។");
+    alert("មានបញ្ហាប្រព័ន្ធ! សូមព្យាយាមម្តងទៀត។");
   } finally {
     isLoading.value = false;
   }
@@ -95,122 +92,146 @@ const submitMessage = async () => {
 </script>
 
 <template>
-  <div>
+  <div class="min-h-screen bg-slate-50 flex items-center justify-center py-20 px-4 sm:px-6 lg:px-8">
     
-    <div class="py-12 md:py-20 px-4 max-w-7xl mx-auto">
+    <div class="bg-white w-full max-w-5xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row border border-slate-100">
       
-      <div class="text-center mb-16 space-y-4">
-        <h1 class="text-4xl md:text-5xl font-black text-slate-800 tracking-tight">
-          ទាក់ទង<span class="text-orange-600">មកយើង</span>
-        </h1>
-        <p class="text-slate-500 text-lg max-w-2xl mx-auto">
-          មានចម្ងល់ ឬត្រូវការជំនួយ? ក្រុមការងារ MyFood រង់ចាំបម្រើសេវាកម្មជូនលោកអ្នកគ្រប់ពេលវេលា
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="md:w-5/12 bg-gradient-to-br from-orange-600 to-red-600 p-10 text-white flex flex-col justify-between relative overflow-hidden">
         
-        <div class="space-y-6 lg:col-span-1">
-          <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-lg hover:shadow-orange-100 transition-all duration-300 flex items-start gap-5 group">
-            <div class="w-14 h-14 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors duration-300 shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+        <div class="absolute bottom-10 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
+
+        <div class="relative z-10">
+          <h2 class="text-3xl font-black tracking-tight mb-2">MyFood Delivery</h2>
+          <p class="text-orange-100 text-sm leading-relaxed">
+            ម្ហូបឆ្ងាញ់ សេវាកម្មរហ័សទាន់ចិត្ត! មានបញ្ហា ឬសំណូមពរ សូមទាក់ទងមកយើងឥឡូវនេះ។
+          </p>
+        </div>
+
+        <div class="space-y-8 mt-12 md:mt-0 relative z-10">
+          
+          <div class="flex items-start gap-4 group">
+            <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-sm group-hover:bg-white/30 transition-all">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
             <div>
-              <h3 class="font-bold text-slate-800 text-lg mb-1">ទីតាំងហាង</h3>
-              <p class="text-slate-500 text-sm leading-relaxed">
-                ភូមិត្រពាំងស្លា ឃុំព្រៃទទឹង <br>ស្រុកបរសេដ្ខ ខេត្តស្មោះស្នេហ៍
-              </p>
+              <h3 class="font-bold text-lg">អាស័យដ្ឋាន</h3>
+              <p class="text-orange-100 text-sm">ស្រុកបរសេដ្ខ ខេត្តកំពង់ស្ពឺ</p>
             </div>
           </div>
 
-          <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-lg hover:shadow-orange-100 transition-all duration-300 flex items-start gap-5 group">
-            <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300 shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+          <div class="flex items-start gap-4 group">
+            <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-sm group-hover:bg-white/30 transition-all">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
             </div>
             <div>
-              <h3 class="font-bold text-slate-800 text-lg mb-1">លេខទំនាក់ទំនង</h3>
-              <p class="text-slate-500 font-bold text-lg text-orange-600">099 999 333</p>
-              <p class="text-slate-400 text-xs mt-1">រៀងរាល់ថ្ងៃ 7:00ព្រឹក - 9:00យប់</p>
+              <h3 class="font-bold text-lg">ទូរស័ព្ទ</h3>
+              <p class="text-orange-100 text-sm font-mono tracking-wider font-bold">099 999 333</p>
             </div>
           </div>
 
-          <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-lg hover:shadow-orange-100 transition-all duration-300 flex items-start gap-5 group">
-            <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300 shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+          <div class="flex items-start gap-4 group">
+            <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-sm group-hover:bg-white/30 transition-all">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
             <div>
-              <h3 class="font-bold text-slate-800 text-lg mb-1">អ៊ីមែល</h3>
-              <p class="text-slate-500 text-sm">Vue.js_group4@gmail.com</p>
-              <p class="text-slate-500 text-sm">food_shop@mygmail.com</p>
+              <h3 class="font-bold text-lg">អ៊ីមែល</h3>
+              <p class="text-orange-100 text-sm">food_shop@gmail.com</p>
             </div>
           </div>
         </div>
 
-        <div class="lg:col-span-2 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-xl shadow-orange-100/50 border border-slate-100">
-          <h3 class="text-2xl font-black text-slate-800 mb-6">ផ្ញើសារមកកាន់ពួកយើង</h3>
-          
-          <form @submit.prevent="submitMessage" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-2">
-                <label class="text-sm font-bold text-slate-500 ml-2">ឈ្មោះរបស់អ្នក</label>
-                <input v-model="form.name" type="text" placeholder="បញ្ចូលឈ្មោះ" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-bold text-slate-700" required>
-              </div>
-              <div class="space-y-2">
-                <label class="text-sm font-bold text-slate-500 ml-2">លេខទូរស័ព្ទ / អ៊ីមែល</label>
-                <input v-model="form.email" type="text" placeholder="បញ្ចូលលេខទំនាក់ទំនង" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-bold text-slate-700" required>
-              </div>
-            </div>
-
-            <div class="space-y-2">
-              <label class="text-sm font-bold text-slate-500 ml-2">សាររបស់អ្នក</label>
-              <textarea v-model="form.message" rows="4" placeholder="សរសេរអ្វីដែលអ្នកចង់ប្រាប់យើង..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-bold text-slate-700 resize-none" required></textarea>
-            </div>
-
-            <button type="submit" :disabled="isLoading" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-200 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
-              <span v-if="isLoading">កំពុងផ្ញើ...</span>
-              <span v-else>ផ្ញើសារឥឡូវនេះ</span>
-              <svg v-if="!isLoading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0 1 21.485 12 59.77 59.77 0 0 1 3.27 20.876L5.999 12zm0 0h7.5" />
-              </svg>
-            </button>
-          </form>
+        <div class="mt-12 md:mt-0 pt-6 border-t border-white/20 relative z-10">
+          <p class="text-xs text-orange-200 text-center md:text-left">
+            © 2026 MyFood Delivery. រក្សាសិទ្ធិគ្រប់យ៉ាង.
+          </p>
         </div>
       </div>
+
+      <div class="md:w-7/12 p-8 md:p-12 bg-white">
+        <div class="mb-8">
+            <h3 class="text-2xl font-black text-slate-800 mb-2">ផ្ញើសារមកកាន់ពួកយើង 👋</h3>
+            <p class="text-slate-500 text-sm">សូមបំពេញព័ត៌មានខាងក្រោម យើងនឹងតបត្រឡប់ក្នុងរយៈពេល ២៤ម៉ោង។</p>
+        </div>
+
+        <form @submit.prevent="submitMessage" class="space-y-6">
+          
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-2">ឈ្មោះរបស់អ្នក</label>
+            <div class="relative group">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span class="text-gray-400 group-focus-within:text-orange-500 transition-colors">👤</span>
+              </div>
+              <input v-model="form.name" type="text" placeholder="ឧ. ម៉េង បញ្ញា" 
+                class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-slate-800 font-medium placeholder:text-slate-400"
+                required
+              >
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-2">លេខទូរស័ព្ទ ឬ អ៊ីមែល</label>
+            <div class="relative group">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span class="text-gray-400 group-focus-within:text-orange-500 transition-colors">📞</span>
+              </div>
+              <input v-model="form.email" type="text" placeholder="ឧ. 012 345 678" 
+                class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-slate-800 font-medium placeholder:text-slate-400"
+                required
+              >
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-2">សាររបស់អ្នក</label>
+            <div class="relative group">
+              <div class="absolute top-3.5 left-4 pointer-events-none">
+                <span class="text-gray-400 group-focus-within:text-orange-500 transition-colors">💬</span>
+              </div>
+              <textarea v-model="form.message" rows="4" placeholder="តើអ្នកចង់ប្រាប់អ្វីដល់ពួកយើង?" 
+                class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-slate-800 font-medium resize-none placeholder:text-slate-400"
+                required
+              ></textarea>
+            </div>
+          </div>
+
+          <button type="submit" :disabled="isLoading" 
+            class="w-full py-4 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 hover:shadow-lg hover:shadow-orange-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed group mt-2">
+            <span v-if="isLoading">កំពុងផ្ញើ...</span>
+            <span v-else>ផ្ញើសារឥឡូវនេះ</span>
+            <svg v-if="!isLoading" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+
+        </form>
+      </div>
+
     </div>
 
-    <Transition name="toast">
-      <div 
-        v-if="showSuccessModal" 
-        class="fixed bottom-6 right-6 z-[50] flex items-end justify-end pointer-events-none"
-      >
-        <div class="bg-white border border-green-100 rounded-2xl shadow-2xl shadow-green-100 p-5 flex items-center gap-4 max-w-sm pointer-events-auto relative overflow-hidden">
-            
-            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-green-500"></div>
-
-            <div class="bg-green-100 text-green-600 p-2 rounded-full flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-            </div>
-
-            <div class="flex-grow">
-                <h4 class="font-black text-slate-800 text-sm">ផ្ញើសារជោគជ័យ!</h4>
-                <p class="text-slate-500 text-xs mt-0.5">ក្រុមការងារយើងនឹងតបត្រឡប់ឆាប់ៗនេះ។</p>
-            </div>
-
-            <button @click="showSuccessModal = false" class="text-slate-300 hover:text-slate-500 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+    <Transition name="slide-fade">
+      <div v-if="showSuccessModal" class="fixed bottom-6 right-6 z-50 bg-white border-l-4 border-green-500 rounded-xl shadow-2xl p-4 flex items-center gap-4 pr-10">
+        <div class="text-green-500 bg-green-50 p-2 rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
         </div>
+        <div>
+          <h4 class="font-bold text-slate-800">ជោគជ័យ!</h4>
+          <p class="text-xs text-slate-500 mt-0.5">សាររបស់អ្នកត្រូវបានផ្ញើរួចរាល់។</p>
+        </div>
+        <button @click="showSuccessModal = false" class="absolute top-2 right-2 text-slate-300 hover:text-slate-500 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
       </div>
     </Transition>
 
@@ -218,15 +239,16 @@ const submitMessage = async () => {
 </template>
 
 <style scoped>
-/* Toast Animation */
-.toast-enter-active,
-.toast-leave-active {
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* Custom Transition for Toast */
+.slide-fade-enter-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-
-.toast-enter-from,
-.toast-leave-to {
+.slide-fade-leave-active {
+  transition: all 0.4s cubic-bezier(1, 0.5, 0.8, 1);
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateX(20px) translateY(10px);
   opacity: 0;
-  transform: translateY(20px) scale(0.95);
 }
 </style>
