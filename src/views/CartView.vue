@@ -6,7 +6,7 @@ import { useToastStore } from '../stores/toast';
 import { useRouter } from 'vue-router'; 
 import { supabase } from '../supabase'; 
 
-// 🔥🔥🔥 REPLACE THESE WITH YOUR TELEGRAM KEYS 🔥🔥🔥
+// 🔥🔥🔥 Telegram Configuration 🔥🔥🔥
 const TELEGRAM_BOT_TOKEN = '8253458210:AAG2bggWcLeBEuhwyW0pTMJf0q_dLic6124'; 
 const TELEGRAM_CHAT_ID = '7309869072';
 
@@ -34,9 +34,11 @@ const customer = ref({
 
 onMounted(() => {
   if (authStore.user) {
-    customer.value.name = authStore.user.username || '';
-    customer.value.phone = authStore.user.phone || '';
-    customer.value.address = authStore.user.address || '';
+    // 🔥 ទាញទិន្នន័យពី User Metadata (ប្រសិនបើមាន)
+    const meta = authStore.user.user_metadata || {};
+    customer.value.name = meta.username || authStore.user.email || '';
+    customer.value.phone = meta.phone || '';
+    customer.value.address = meta.address || '';
   }
   const savedLocation = localStorage.getItem('customer_location');
   if(savedLocation) customer.value.address = savedLocation;
@@ -52,6 +54,7 @@ const getLocation = () => {
     (position) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
+      // 🔥 កែតម្រូវ Link ឱ្យទៅជា Google Maps ដែលបើកបាន
       const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
       customer.value.address = mapLink;
       isLoadingLocation.value = false;
@@ -80,7 +83,6 @@ const formatPrice = (value) => {
 
 // 🔥 Function: Send Notification to Telegram
 const sendTelegramNotification = async (orderData, receiptUrl) => {
-    // 1. Format the message
     const itemsList = orderData.items.map(i => `- ${i.title} (x${i.quantity})`).join('\n');
     const total = formatPrice(orderData.total_price);
     const slipStatus = receiptUrl ? "✅ បានភ្ជាប់វិក្កយបត្រ" : "💵 បង់លុយផ្ទាល់";
@@ -102,7 +104,6 @@ ${itemsList}
     `;
 
     try {
-        // 2. Send Text Message
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -113,7 +114,6 @@ ${itemsList}
             })
         });
         
-        // 3. Send Photo (if receipt exists)
         if (receiptUrl) {
              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
                 method: 'POST',
@@ -125,7 +125,6 @@ ${itemsList}
                 })
             });
         }
-
     } catch (error) {
         console.error("Telegram Error:", error);
     }
@@ -136,10 +135,14 @@ const openCheckout = () => {
       toast.show('កន្ត្រករបស់អ្នកទទេ!', 'error'); 
       return; 
   }
-  if (authStore.user) {
-    if(!customer.value.name) customer.value.name = authStore.user.username;
-    if(!customer.value.phone) customer.value.phone = authStore.user.phone;
+  
+  // ត្រួតពិនិត្យថា Login នៅ? បើមិនទាន់ Login នាំទៅ Login សិន
+  if (!authStore.user) {
+     toast.show('សូម Login ជាមុនសិន!', 'error');
+     router.push('/login');
+     return;
   }
+
   showInfoModal.value = true;
 };
 
@@ -179,11 +182,12 @@ const submitOrder = async () => {
 
       // 2. Prepare Data
       const orderData = {
+            user_id: authStore.user?.id, // 🔥 សំខាន់! ដាក់ ID ដើម្បីឱ្យចូល History
             customer_name: customer.value.name,
             phone: customer.value.phone,
             address: customer.value.address,
             items: cartStore.items, 
-            total_price: cartStore.totalAmount || cartStore.totalPrice,
+            total_price: cartStore.totalAmount || cartStore.totalPrice, // ដាក់ fallback
             status: 'pending',
             receipt_url: receiptUrl 
       };
@@ -193,8 +197,7 @@ const submitOrder = async () => {
 
       if (error) throw error; 
 
-      // 4. 🔥 Send Notification to Telegram
-      // We don't await this to fail the order, just log errors if any
+      // 4. Send Notification
       sendTelegramNotification(orderData, receiptUrl);
 
       // 5. Success & Cleanup
@@ -209,7 +212,8 @@ const submitOrder = async () => {
       receiptPreview.value = null;
       showPaymentModal.value = false;
       
-      router.push('/receipt');
+      // បញ្ជូនទៅកាន់ History ឬ Receipt
+      router.push('/history'); 
 
   } catch (err) {
       console.error('Supabase Error:', err);
@@ -234,7 +238,7 @@ const confirmDelete = () => {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto p-6 font-sans min-h-[60vh]">
+  <div class="max-w-4xl mx-auto p-6 font-sans min-h-[60vh] pt-24">
     <h1 class="text-2xl font-header font-bold mb-6 text-gray-800 flex items-center gap-2">កន្ត្រករបស់អ្នក 🛒</h1>
     
     <div v-if="cartStore.items.length === 0" class="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-100">
