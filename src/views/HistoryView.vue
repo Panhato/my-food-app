@@ -1,58 +1,21 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import { supabase } from '../supabase';
+import { onMounted } from 'vue';
+import { useAuthStore } from '../stores/auth'; // ហៅ Auth Store
+import { useOrderStore } from '../stores/order'; // ហៅ Order Store
+import { useRouter } from 'vue-router';
 
-const orders = ref([]);
-const loading = ref(false);
-const userPhone = ref(localStorage.getItem('user_phone') || '');
-const inputPhone = ref(''); // For typing phone number
+const authStore = useAuthStore();
+const orderStore = useOrderStore();
+const router = useRouter();
 
-// Function: Set phone number to view history & Log user activity
-const setPhoneNumber = async () => {
-  if (inputPhone.value.trim()) {
-    const phone = inputPhone.value.trim();
-    userPhone.value = phone;
-    localStorage.setItem('user_phone', phone);
-
-    // 🔥 NEW: Record User Login Activity
-    try {
-        await supabase.from('app_users').upsert({ 
-            phone: phone,
-            last_seen: new Date()
-        }, { onConflict: 'phone' });
-    } catch (error) {
-        console.error("Error logging user:", error);
-    }
-
-    fetchMyOrders();
-    setupSubscription(); 
+// ពេលបើកទំព័រភ្លាម ឱ្យទាញយក Order របស់ User ហ្នឹងមក
+onMounted(() => {
+  if (authStore.user) {
+    orderStore.fetchMyOrders();
   }
-};
+});
 
-// Function: Logout (Clear Phone)
-const logout = () => {
-  userPhone.value = '';
-  orders.value = [];
-  localStorage.removeItem('user_phone');
-  if (subscription) supabase.removeChannel(subscription);
-};
-
-// Fetch data from Supabase
-const fetchMyOrders = async () => {
-  if (!userPhone.value) return;
-  
-  loading.value = true;
-  const { data, error } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('phone', userPhone.value) 
-    .order('id', { ascending: false });
-
-  if (data) orders.value = data;
-  loading.value = false;
-};
-
-// Status Info
+// Helper Function: សម្រាប់ប្តូរពាក្យ និងពណ៌
 const getStatusInfo = (status) => {
     switch(status) {
         case 'pending': return { text: 'រង់ចាំ', color: 'text-yellow-600 bg-yellow-100', icon: '⏳', percent: '25%' };
@@ -67,69 +30,33 @@ const getStatusInfo = (status) => {
 
 const formatPrice = (val) => '$' + parseFloat(val).toFixed(2);
 const formatDate = (date) => new Date(date).toLocaleString('km-KH');
+
+// Function សម្រាប់បង្ហាញឈ្មោះម្ហូប
 const formatItems = (items) => {
     try {
+        // ពិនិត្យមើលថា items ជា string ឬ array ព្រោះ Supabase ពេលខ្លះបោះមកខុសគ្នា
         const parsed = typeof items === 'string' ? JSON.parse(items) : items;
-        return parsed.map(i => `${i.title} (x${i.quantity})`).join(', ');
+        if (!Array.isArray(parsed)) return '...';
+        return parsed.map(i => `${i.name} (x${i.qty})`).join(', ');
     } catch(e) { return '...'; }
 };
 
-// Realtime Setup
-let subscription;
-const setupSubscription = () => {
-    if (subscription) supabase.removeChannel(subscription);
-    
-    subscription = supabase
-    .channel('public:orders')
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
-        if (payload.new.phone === userPhone.value) {
-            fetchMyOrders();
-        }
-    })
-    .subscribe();
+const handleLoginRedirect = () => {
+    router.push('/login');
 };
-
-// Track user on mount if already logged in
-const trackUser = async (phone) => {
-    try {
-        await supabase.from('app_users').upsert({ 
-            phone: phone,
-            last_seen: new Date()
-        }, { onConflict: 'phone' });
-    } catch (e) { console.error(e) }
-};
-
-onMounted(() => {
-    if (userPhone.value) {
-        trackUser(userPhone.value); // 🔥 Track immediately on open
-        fetchMyOrders();
-        setupSubscription();
-    }
-});
-
-onUnmounted(() => {
-    if (subscription) supabase.removeChannel(subscription);
-});
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto p-4 md:p-8 font-sans min-h-screen bg-gray-50/50">
+  <div class="max-w-3xl mx-auto p-4 md:p-8 font-sans min-h-screen bg-gray-50/50 pt-24">
     
-    <div v-if="!userPhone" class="flex flex-col items-center justify-center pt-20">
+    <div v-if="!authStore.user" class="flex flex-col items-center justify-center pt-10">
         <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 w-full max-w-sm text-center">
-            <span class="text-5xl mb-4 block">📱</span>
-            <h2 class="text-xl font-black text-slate-800 mb-2">បញ្ចូលលេខទូរស័ព្ទ</h2>
-            <p class="text-gray-400 text-sm mb-6">សូមវាយលេខទូរស័ព្ទដែលអ្នកបានកុម្ម៉ង់ ដើម្បីមើលប្រវត្តិ។</p>
+            <span class="text-5xl mb-4 block">🔒</span>
+            <h2 class="text-xl font-black text-slate-800 mb-2">សូមចូលគណនី</h2>
+            <p class="text-gray-400 text-sm mb-6">អ្នកត្រូវចូលគណនីជាមុនសិន ដើម្បីមើលប្រវត្តិការកុម្ម៉ង់របស់អ្នក។</p>
             
-            <input 
-                v-model="inputPhone" 
-                type="tel" 
-                placeholder="ឧ. 012 345 678" 
-                class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 mb-4 font-bold text-center focus:outline-none focus:ring-2 focus:ring-orange-500 text-slate-800" 
-            />
-            
-            <button @click="setPhoneNumber" class="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-200 active:scale-95">
-                មើលប្រវត្តិ
+            <button @click="handleLoginRedirect" class="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-200 active:scale-95">
+                ចូលគណនី (Login)
             </button>
         </div>
     </div>
@@ -137,27 +64,28 @@ onUnmounted(() => {
     <div v-else>
         <div class="flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <div>
-                <h1 class="text-xl font-black text-slate-800">តាមដានការកុម្ម៉ង់</h1>
-                <p class="text-xs text-gray-500 mt-1">លេខ: <span class="font-bold text-orange-600">{{ userPhone }}</span></p>
+                <h1 class="text-xl font-black text-slate-800">ប្រវត្តិការកុម្ម៉ង់ 📦</h1>
+                <p class="text-xs text-gray-500 mt-1">គណនី: <span class="font-bold text-orange-600">{{ authStore.user.email }}</span></p>
             </div>
             <div class="flex gap-2">
-                <button @click="fetchMyOrders" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 text-gray-500 border">🔄</button>
-                <button @click="logout" class="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors">ចាកចេញ</button>
+                <button @click="orderStore.fetchMyOrders()" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 text-gray-500 border">
+                    🔄 Reload
+                </button>
             </div>
         </div>
 
-        <div v-if="loading" class="text-center py-20">
-            <p class="animate-pulse text-gray-400">កំពុងទាញទិន្នន័យ...</p>
+        <div v-if="orderStore.isLoading" class="text-center py-20">
+            <p class="animate-pulse text-gray-400 font-bold">កំពុងទាញទិន្នន័យ...</p>
         </div>
 
-        <div v-else-if="orders.length === 0" class="text-center py-20 bg-white rounded-[2rem] border border-dashed border-gray-300">
-           <span class="text-5xl mb-4 block opacity-50">🧾</span>
-           <p class="text-gray-400 font-bold">មិនទាន់មានប្រវត្តិសម្រាប់លេខនេះទេ</p>
+        <div v-else-if="orderStore.orders.length === 0" class="text-center py-20 bg-white rounded-[2rem] border border-dashed border-gray-300">
+           <span class="text-5xl mb-4 block opacity-50">🍽️</span>
+           <p class="text-gray-400 font-bold">អ្នកមិនទាន់បានកុម្ម៉ង់អ្វីទេ</p>
            <router-link to="/menu" class="inline-block mt-4 text-orange-600 font-bold hover:underline">ទៅកុម្ម៉ង់ម្ហូប →</router-link>
         </div>
 
         <div v-else class="space-y-6">
-          <div v-for="order in orders" :key="order.id" class="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all">
+          <div v-for="order in orderStore.orders" :key="order.id" class="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all">
             
             <div class="flex justify-between items-start mb-4">
                 <div class="flex items-center gap-3">
