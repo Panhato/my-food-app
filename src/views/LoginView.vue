@@ -3,20 +3,20 @@ import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast'; 
 import { useRouter } from 'vue-router';
+import { supabase } from '../supabase'; // 🔥 1. Import Supabase ដើម្បីបញ្ចូលទិន្នន័យ
 
 const authStore = useAuthStore();
 const toast = useToastStore();
 const router = useRouter();
 
-// State to switch between Login and Register modes
 const isRegister = ref(false); 
 
 // Form Inputs
 const email = ref(''); 
 const password = ref('');
-const confirmPassword = ref(''); // For Register only
-const username = ref(''); // Extra field for Register
-const phone = ref('');    // Extra field for Register (Optional)
+const confirmPassword = ref(''); 
+const username = ref(''); 
+const phone = ref('');    
 
 const isLoading = ref(false);
 
@@ -31,7 +31,7 @@ const handleSubmit = async () => {
   try {
       if (isRegister.value) {
         // ========================
-        // REGISTER LOGIC (Supabase)
+        // 1. REGISTER LOGIC
         // ========================
         if (password.value !== confirmPassword.value) {
             toast.show("ពាក្យសម្ងាត់ទាំងពីរមិនដូចគ្នាទេ!", "error");
@@ -44,21 +44,30 @@ const handleSubmit = async () => {
              return;
         }
         
-        // Call register action from store
+        // ចុះឈ្មោះក្នុងប្រព័ន្ធ Auth
         await authStore.register(email.value, password.value, username.value, phone.value);
         
+        // 🔥 2. បញ្ចូលឈ្មោះទៅក្នុងតារាង 'app_users' (ដើម្បីឱ្យ Admin ឃើញ)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            await supabase.from('app_users').insert({
+                // id: user.id, // បើមិនបាច់ប្រើ Relation មិនបាច់ដាក់ក៏បាន
+                phone: phone.value || username.value, // ដាក់លេខទូរស័ព្ទ ឬឈ្មោះ
+                created_at: new Date(),
+                last_seen: new Date()
+            });
+        }
+
         toast.show("ចុះឈ្មោះជោគជ័យ! សូមស្វាគមន៍ 🎉", "success");
-        router.push('/'); // Go to Home
+        router.push('/'); 
 
       } else {
         // ========================
-        // LOGIN LOGIC (Supabase)
+        // 3. LOGIN LOGIC
         // ========================
         await authStore.login(email.value, password.value);
-        
         toast.show("ចូលប្រើប្រាស់ជោគជ័យ! ✅", "success");
         
-        // Check role to redirect
         if (authStore.isAdmin()) {
             router.push('/admin');
         } else {
@@ -138,11 +147,6 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
