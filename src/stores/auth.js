@@ -60,7 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
     return true;
   };
 
-  // 🔥 4. Update Profile (កែសម្រួលបន្ថែម)
+  // 🔥 4. Update Profile
   const updateProfile = async (updates) => {
     let payload = {};
 
@@ -94,11 +94,25 @@ export const useAuthStore = defineStore('auth', () => {
     return true;
   };
 
-  // 🔥 6. Logout
+  // 🔥 6. Logout (កែសម្រួលឱ្យខ្លាំង - Robust Logout)
   const logout = async () => {
-    await supabase.auth.signOut();
-    user.value = null;
-    window.location.reload(); 
+    try {
+      // ព្យាយាមប្រាប់ Supabase ឱ្យ Logout
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Logout error (Supabase):", error);
+    } finally {
+      // មិនថា Supabase ជោគជ័យ ឬបរាជ័យ (ដោយសារ Antivirus/Internet)
+      // យើងត្រូវតែសម្អាតទិន្នន័យនៅក្នុង App ជានិច្ច
+      user.value = null;
+      
+      // សម្អាត LocalStorage ទាំងអស់ (ដើម្បីការពារកុំឱ្យជាប់ទិន្នន័យចាស់)
+      localStorage.clear(); 
+
+      // ប្រើ window.location.href ដើម្បី Force Redirect ទៅ Login
+      // ការធ្វើបែបនេះល្អជាង router.push ព្រោះវាជួយ Reset State ទាំងអស់ក្នុង App
+      window.location.href = '/login'; 
+    }
   };
 
   // Getters
