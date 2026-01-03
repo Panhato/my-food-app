@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { supabase } from '../supabase'; 
-import { RouterLink, useRouter } from 'vue-router'; // 🔥 Import useRouter
+import { RouterLink, useRouter } from 'vue-router'; 
 import { useCartStore } from '../stores/cart';
 
 // Import Swiper
@@ -13,7 +13,7 @@ import { Autoplay, Pagination, Navigation } from 'swiper/modules';
 
 const modules = [Autoplay, Pagination, Navigation];
 const cartStore = useCartStore();
-const router = useRouter(); // 🔥 Initialize Router
+const router = useRouter(); 
 
 // State
 const banners = ref([]);
@@ -22,12 +22,42 @@ const products = ref([]);
 
 const fetchBanners = async () => {
   const { data } = await supabase.from('banners').select('*');
-  if (data) banners.value = data;
+  if (data && data.length > 0) {
+      banners.value = data;
+  } else {
+      // 🔥 Dummy Data for Banners (Fallback)
+      banners.value = [
+          { 
+            id: 1, 
+            image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000&auto=format&fit=crop', 
+            title: 'រសជាតិពិត', 
+            subtitle: 'ម្ហូបខ្មែរ និងបរទេស' 
+          },
+          { 
+            id: 2, 
+            image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1000&auto=format&fit=crop', 
+            title: 'សេវារហ័ស', 
+            subtitle: 'ដឹកជញ្ជូនគ្រប់ទីកន្លែង' 
+          }
+      ];
+  }
 };
 
 const fetchChefs = async () => {
   const { data } = await supabase.from('chefs').select('*');
-  if (data) chefs.value = data;
+  if (data && data.length > 0) {
+      chefs.value = data;
+  } else {
+      // 🔥 Dummy Data for Chef (Fallback)
+      chefs.value = [
+          { 
+            id: 1, 
+            image: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?q=80&w=1000&auto=format&fit=crop', 
+            name: 'Master Chef', 
+            bio: 'Expert in Asian Cuisine with over 10 years of experience.' 
+          }
+      ];
+  }
 };
 
 const fetchProducts = async () => {
@@ -47,7 +77,6 @@ const formatPrice = (value) => {
   return '$' + val.toFixed(2);
 };
 
-// 🔥 Function to navigate to Menu page
 const goToMenu = () => {
     router.push('/menu');
 };
@@ -74,7 +103,6 @@ onMounted(() => {
             <SwiperSlide v-for="(banner, index) in banners" :key="index">
                 <div class="w-full h-full relative">
                     <img :src="banner.image" class="w-full h-full object-cover" />
-                    
                     <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex flex-col justify-center px-8 md:px-20">
                         <div class="max-w-2xl animate-fade-in-up">
                             <h2 class="text-2xl md:text-4xl font-black text-white mb-2 drop-shadow-lg leading-tight">
@@ -112,7 +140,6 @@ onMounted(() => {
             <div class="w-full lg:w-[260px] flex-shrink-0">
                 <div class="bg-orange-600 rounded-[2rem] relative overflow-hidden shadow-xl shadow-orange-200 h-auto border-4 border-white">
                     <Swiper
-                        v-if="chefs.length > 0"
                         :modules="modules"
                         :slides-per-view="1"
                         :loop="true"
@@ -130,11 +157,6 @@ onMounted(() => {
                             </div>
                         </SwiperSlide>
                     </Swiper>
-                    
-                    <div v-else class="w-full aspect-[3/4] flex flex-col items-center justify-center text-white bg-orange-400 p-6 text-center">
-                        <span class="text-5xl mb-4">👨‍🍳</span>
-                        <p class="font-bold">មិនទាន់មានទិន្នន័យ</p>
-                    </div>
                 </div>
             </div>
 
