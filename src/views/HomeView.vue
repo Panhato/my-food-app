@@ -19,87 +19,42 @@ const router = useRouter();
 const banners = ref([]);
 const chefs = ref([]);
 const products = ref([]);
+const isLoading = ref(true); // បន្ថែម Loading state
 
-// 🔥 1. Fetch Banners (មាន Fallback)
+// 🔥 1. Fetch Banners
 const fetchBanners = async () => {
   try {
       const { data, error } = await supabase.from('banners').select('*');
-      
       if (error) throw error;
-
-      if (data && data.length > 0) {
-          banners.value = data;
-      } else {
-          throw new Error("No data"); // បោះ Error ដើម្បីឱ្យចូល catch
-      }
+      banners.value = data || [];
   } catch (err) {
-      console.log("Using Dummy Banners");
-      // Fallback Data
-      banners.value = [
-          { 
-            id: 1, 
-            image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1000&q=80', 
-            title: 'រសជាតិពិត', 
-            subtitle: 'ម្ហូបខ្មែរ និងបរទេស' 
-          },
-          { 
-            id: 2, 
-            image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1000&q=80', 
-            title: 'សេវារហ័ស', 
-            subtitle: 'ដឹកជញ្ជូនគ្រប់ទីកន្លែង' 
-          }
-      ];
+      console.error("Error loading banners:", err.message);
+      banners.value = []; // ❌ លែងដាក់រូប Dummy ហើយ (ដាក់ទទេវិញ)
   }
 };
 
-// 🔥 2. Fetch Chefs (មាន Fallback)
+// 🔥 2. Fetch Chefs
 const fetchChefs = async () => {
   try {
       const { data, error } = await supabase.from('chefs').select('*');
-      
       if (error) throw error;
-
-      if (data && data.length > 0) {
-          chefs.value = data;
-      } else {
-          throw new Error("No data");
-      }
+      chefs.value = data || [];
   } catch (err) {
-      console.log("Using Dummy Chefs");
-      // Fallback Data
-      chefs.value = [
-          { 
-            id: 1, 
-            image: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&w=800&q=80', 
-            name: 'Master Chef', 
-            bio: 'Expert in Asian Cuisine with over 10 years of experience.' 
-          }
-      ];
+      console.error("Error loading chefs:", err.message);
+      chefs.value = []; // ❌ លែងដាក់រូប Dummy ហើយ
   }
 };
 
-// 🔥 3. Fetch Products (មាន Fallback - សំខាន់!)
+// 🔥 3. Fetch Products (សំខាន់!)
 const fetchProducts = async () => {
   try {
       const { data, error } = await supabase.from('products').select('*');
-      
       if (error) throw error;
-
-      if (data && data.length > 0) {
-          products.value = data;
-      } else {
-          throw new Error("No data");
-      }
+      products.value = data || [];
   } catch (err) {
-      console.log("Using Dummy Products");
-      // Fallback Data (ដាក់ឱ្យច្រើនបន្តិចដើម្បីឱ្យស្អាត)
-      products.value = [
-          { id: 1, title: 'បាយស្រូបសាច់ជ្រូក', category: 'អាហារពេលព្រឹក', price: 2.5, image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' },
-          { id: 2, title: 'គុយទាវភ្នំពេញ', category: 'ពេញនិយម', price: 3.5, image: 'https://images.unsplash.com/photo-1555126634-323283e090fa' },
-          { id: 3, title: 'Burger Set', category: 'Fast Food', price: 5.0, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd' },
-          { id: 4, title: 'Pizza Special', category: 'Fast Food', price: 8.0, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38' },
-          { id: 5, title: 'Spaghetti', category: 'Italian', price: 6.0, image: 'https://images.unsplash.com/photo-1551183053-bf91b1dca034' }
-      ];
+      console.error("Error loading products:", err.message);
+      // 🔥 កែត្រង់នេះ៖ ដាក់ជា List ទទេ ដើម្បីកុំឱ្យចេញ Burger/Pizza ផ្តេសផ្តាស
+      products.value = []; 
   }
 };
 
@@ -119,17 +74,17 @@ const goToMenu = () => {
     router.push('/menu');
 };
 
-onMounted(() => {
-  fetchBanners();
-  fetchChefs();
-  fetchProducts();
+onMounted(async () => {
+  isLoading.value = true;
+  await Promise.all([fetchBanners(), fetchChefs(), fetchProducts()]);
+  isLoading.value = false;
 });
 </script>
 
 <template>
   <div class="font-sans min-h-screen bg-[#FDFDFD] pb-20">
     
-    <div class="w-full h-[160px] md:h-[260px] relative overflow-hidden bg-gray-100">
+    <div v-if="banners.length > 0" class="w-full h-[160px] md:h-[260px] relative overflow-hidden bg-gray-100">
         <Swiper
             :modules="modules"
             :slides-per-view="1"
@@ -158,6 +113,10 @@ onMounted(() => {
             </SwiperSlide>
         </Swiper>
     </div>
+    <div v-else class="w-full h-[160px] md:h-[260px] bg-slate-100 flex items-center justify-center text-slate-400">
+        <span v-if="isLoading">កំពុងផ្ទុក...</span>
+        <span v-else>មិនមានរូបភាព Banner</span>
+    </div>
 
     <div class="max-w-[1600px] mx-auto px-4 md:px-8 py-8">
         
@@ -176,7 +135,7 @@ onMounted(() => {
         <div class="flex flex-col lg:flex-row gap-6 items-start">
             
             <div class="w-full lg:w-[260px] flex-shrink-0">
-                <div class="bg-orange-600 rounded-[2rem] relative overflow-hidden shadow-xl shadow-orange-200 h-auto border-4 border-white">
+                <div v-if="chefs.length > 0" class="bg-orange-600 rounded-[2rem] relative overflow-hidden shadow-xl shadow-orange-200 h-auto border-4 border-white">
                     <Swiper
                         :modules="modules"
                         :slides-per-view="1"
@@ -196,12 +155,20 @@ onMounted(() => {
                         </SwiperSlide>
                     </Swiper>
                 </div>
+                <div v-else class="bg-orange-50 rounded-[2rem] h-[300px] flex items-center justify-center text-orange-300 border-4 border-white">
+                    <p class="font-bold">No Chef Info</p>
+                </div>
             </div>
 
             <div class="flex-1 w-full">
                 
-                <div v-if="popularProducts.length === 0" class="text-center py-20 border-2 border-dashed border-gray-200 rounded-3xl">
-                    <p class="text-gray-400">មិនទាន់មានទិន្នន័យម្ហូប</p>
+                <div v-if="popularProducts.length === 0" class="text-center py-20 border-2 border-dashed border-gray-200 rounded-3xl bg-slate-50">
+                    <p class="text-gray-500 font-bold text-lg mb-2">
+                        {{ isLoading ? 'កំពុងផ្ទុកទិន្នន័យ...' : 'មិនមានទិន្នន័យម្ហូបទេ' }}
+                    </p>
+                    <p v-if="!isLoading" class="text-sm text-gray-400 max-w-md mx-auto">
+                        សូមពិនិត្យមើលអ៊ីនធឺណិត ឬសាកល្បងនៅលើទូរស័ព្ទដៃ (ប្រសិនបើកុំព្យូទ័រមានបញ្ហា Antivirus)។
+                    </p>
                 </div>
 
                 <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
