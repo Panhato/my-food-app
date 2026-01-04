@@ -12,8 +12,8 @@ import ReceiptView from '../views/ReceiptView.vue';
 import HistoryView from '../views/HistoryView.vue';
 import LoginView from '../views/LoginView.vue'; 
 import ProfileView from '../views/ProfileView.vue';
-import ForgotPasswordView from '../views/ForgotPasswordView.vue'; // 🔥 បន្ថែមថ្មី
-import UpdatePasswordView from '../views/UpdatePasswordView.vue'; // 🔥 បន្ថែមថ្មី
+import ForgotPasswordView from '../views/ForgotPasswordView.vue'; 
+import UpdatePasswordView from '../views/UpdatePasswordView.vue'; 
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -36,7 +36,7 @@ const router = createRouter({
       path: '/profile', 
       name: 'profile', 
       component: ProfileView,
-      meta: { requiresAuth: true } // ដាក់សម្គាល់ថាត្រូវការ Login
+      meta: { requiresAuth: true } 
     },
 
     // 🔥 3. Admin (ត្រូវការ Login + ជា Admin)
@@ -44,38 +44,37 @@ const router = createRouter({
       path: '/admin', 
       name: 'admin', 
       component: AdminView,
-      meta: { requiresAdmin: true } // ដាក់សម្គាល់ថាត្រូវការ Admin
+      meta: { requiresAuth: true, requiresAdmin: true } // ដាក់ទាំងពីរដើម្បីសុវត្ថិភាព
     }, 
   ]
 });
 
 // 🔥 4. Global Guard (អ្នកយាមផ្លូវ)
-// កូដនេះនឹងដំណើរការរាល់ពេលបងចុចប្តូរទំព័រ
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
-  // ពេល Refresh ទំព័រ ដំបូង Store អាចនឹងទទេ ដូច្នេះត្រូវ LoadUser សិន
+  // ជំហានទី ១: ឆែកមើលថាមាន User នៅ? បើអត់មាន សាក Load ពី Supabase
   if (!authStore.user) {
     await authStore.loadUser();
   }
 
-  // ករណីផ្លូវត្រូវការ Login (requiresAuth)
+  // ជំហានទី ២: ការពារផ្លូវដែលត្រូវការ Login (General Auth)
   if (to.meta.requiresAuth && !authStore.isAuthenticated()) {
+    // បើមិនទាន់ Login -> បញ្ជូនទៅទំព័រ Login
     return next('/login');
   }
 
-  // ករណីផ្លូវត្រូវការ Admin (requiresAdmin)
+  // ជំហានទី ៣: ការពារផ្លូវ Admin (Admin Only)
   if (to.meta.requiresAdmin) {
-    if (!authStore.isAuthenticated()) {
-       return next('/login');
-    }
+    // ដោយសារយើងដាក់ requiresAuth ខាងលើហើយ មិនបាច់ឆែក isAuthenticated ម្តងទៀតទេ
+    // គ្រាន់តែឆែកថាជា Admin ឬអត់?
     if (!authStore.isAdmin()) {
-       alert("អ្នកគ្មានសិទ្ធិចូលកាន់កន្លែងនេះទេ! (Admin Only)");
-       return next('/');
+       alert("សូមអភ័យទោស! អ្នកមិនមានសិទ្ធិចូលមើលទំព័រនេះទេ។ (Admin Only)");
+       return next('/'); // បើមិនមែន Admin ឱ្យទៅផ្ទះវិញ
     }
   }
 
-  // បើគ្រប់យ៉ាងត្រឹមត្រូវ ឱ្យទៅមុខ
+  // បើគ្មានបញ្ហា ឱ្យទៅមុខ
   next();
 });
 

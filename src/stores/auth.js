@@ -94,22 +94,17 @@ export const useAuthStore = defineStore('auth', () => {
     return true;
   };
 
-  // 🔥 6. Logout (កែសម្រួលឱ្យខ្លាំង - Robust Logout)
+  // 🔥 6. Logout (Robust Logout - ការពារបញ្ហា Antivirus)
   const logout = async () => {
     try {
-      // ព្យាយាមប្រាប់ Supabase ឱ្យ Logout (Network Request)
+      // ព្យាយាមប្រាប់ Supabase ឱ្យ Logout
       await supabase.auth.signOut();
     } catch (error) {
       console.error("Logout error (Supabase):", error);
     } finally {
       // ដំណើរការជានិច្ច ទោះបី Supabase ឆ្លើយតប ឬអត់
-      // 1. សម្អាតទិន្នន័យ User ក្នុងកម្មវិធី
       user.value = null;
-      
-      // 2. សម្អាត LocalStorage (កន្ត្រក, ទីតាំង, Token ចាស់ៗ)
       localStorage.clear(); 
-
-      // 3. បញ្ជាឱ្យ Browser ទៅកាន់ទំព័រ Login ភ្លាមៗ (Force Redirect)
       window.location.href = '/login'; 
     }
   };
@@ -117,8 +112,11 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isAuthenticated = () => !!user.value;
   
+  // 🔥 កែសម្រួល៖ បន្ថែម Email របស់បងដើម្បីឱ្យក្លាយជា Admin
   const isAdmin = () => {
-      return user.value?.user_metadata?.role === 'admin' || user.value?.email === 'admin@gmail.com';
+      return user.value?.user_metadata?.role === 'admin' || 
+             user.value?.email === 'admin@gmail.com' ||
+             user.value?.email === 'saopanha933@gmail.com'; // ✅ បន្ថែមឈ្មោះបងនៅទីនេះ
   };
 
   return { 
