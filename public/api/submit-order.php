@@ -20,7 +20,7 @@ if(isset($data->customer) && isset($data->items) && count($data->items) > 0) {
     
     // ១. កំណត់ Telegram Config
     $botToken = "8023985088:AAG5XP2zrhtI_Kup7vu2v7slOx8HLWBg8EM"; // Token របស់បង
-    $chatId = "7309869072";     // Chat ID Group របស់បង
+    $chatId = "-4676998115";     // Chat ID Group របស់បង
 
     // ២. គណនាតម្លៃសរុប និងរៀបចំបញ្ជីមុខម្ហូប
     $itemsList = "";
