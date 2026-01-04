@@ -115,7 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
   // 🔥 កែសម្រួល៖ បន្ថែម Email របស់បងដើម្បីឱ្យក្លាយជា Admin
   const isAdmin = () => {
       return user.value?.user_metadata?.role === 'admin' || 
-             user.value?.email === 'chanro7080@gmail.com' ||
+             user.value?.email === 'admin@gmail.com' ||
              user.value?.email === 'chanro7080@gmail.com'; // ✅ បន្ថែមឈ្មោះបងនៅទីនេះ
   };
 
