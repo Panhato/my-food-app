@@ -117,7 +117,7 @@ export const useAuthStore = defineStore('auth', () => {
       return user.value?.user_metadata?.role === 'admin' || 
              user.value?.email === 'admin@gmail.com' ||
              user.value?.email === 'chanro7080@gmail.com'; // ✅ បន្ថែមឈ្មោះបងនៅទីនេះ
-             user.value?.email === 'mengpanha@gmail.com; // ✅ បន្ថែមឈ្មោះបងនៅទីនេះ
+             user.value?.email === 'mengpanha@gmail.com'; // ✅ បន្ថែមឈ្មោះបងនៅទីនេះ  
   };
 
   return { 
