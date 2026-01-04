@@ -1,14 +1,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { supabase } from '../supabase'; 
-import { useToastStore } from '../stores/toast';
 
-const toast = useToastStore();
+// State
 const activeTab = ref('orders'); 
 const isSubmitting = ref(false);
 
-// 🔥 NEW: Filter & Search State
-const orderFilter = ref('all'); // all, pending, cooking, delivering, completed
+// 🔥 Filter & Search State
+const orderFilter = ref('all'); 
 const searchQuery = ref('');
 
 // Data state
@@ -18,30 +17,43 @@ const chefs = ref([]);
 const orders = ref([]); 
 const users = ref([]); 
 
+// Helper: Notification (ជំនួស Toast Store ដើម្បីកុំឱ្យ Error)
+const showNotification = (msg, type = 'success') => {
+    // បងអាចប្រើ Alert ធម្មតា ឬ Library ផ្សេង
+    alert(`${type === 'success' ? '✅' : '❌'} ${msg}`);
+};
+
 // ========================
 // 0. USERS LOGIC
 // ========================
 const fetchUsers = async () => {
-  const { data, error } = await supabase
-    .from('app_users')
-    .select('*')
-    .order('last_seen', { ascending: false });
-
-  if (!error) users.value = data || [];
+  // ចំណាំ៖ ត្រូវប្រាកដថាបងមាន Table 'app_users'
+  try {
+      const { data, error } = await supabase
+        .from('app_users') // ឬប្រើ auth.users បើបងចងជា function
+        .select('*');
+      
+      if (!error) users.value = data || [];
+  } catch (err) {
+      console.log("Skipping users fetch (Table might not exist)");
+  }
 };
 
 const isOnline = (lastSeen) => {
     if (!lastSeen) return false;
     const diff = new Date() - new Date(lastSeen);
-    return diff < 10 * 60 * 1000; 
+    return diff < 10 * 60 * 1000; // 10 minutes
 };
 
 // ========================
-// 1. ORDER LOGIC (IMPROVED)
+// 1. ORDER LOGIC
 // ========================
 const fetchOrders = async () => {
-  // Get newest orders first
-  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
   if (error) console.error(error);
   orders.value = data || [];
 };
@@ -49,10 +61,10 @@ const fetchOrders = async () => {
 // 🔥 Computed Property for Filtering
 const filteredOrders = computed(() => {
     return orders.value.filter(order => {
-        // Filter by Status Tab
+        // Filter by Status
         const statusMatch = orderFilter.value === 'all' || order.status === orderFilter.value;
         
-        // Filter by Search (Name, Phone, ID)
+        // Filter by Search
         const searchLower = searchQuery.value.toLowerCase();
         const searchMatch = 
             (order.customer_name && order.customer_name.toLowerCase().includes(searchLower)) ||
@@ -63,7 +75,6 @@ const filteredOrders = computed(() => {
     });
 });
 
-// Helper for Status Color
 const getStatusColor = (status) => {
     switch(status) {
         case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
@@ -78,10 +89,9 @@ const getStatusColor = (status) => {
 const updateOrderStatus = async (id, newStatus) => {
   const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', id);
   if (!error) {
-    toast.show(`Status updated to: ${newStatus}`, 'success');
     fetchOrders();
   } else {
-    toast.show('Error updating status!', 'error');
+    showNotification('Error updating status!', 'error');
   }
 };
 
@@ -93,6 +103,7 @@ const formatDate = (timestamp) => {
 };
 
 const formatTimeAgo = (date) => {
+    if (!date) return 'Offline';
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
     if (seconds < 60) return 'Just now';
     const minutes = Math.floor(seconds / 60);
@@ -104,20 +115,24 @@ const formatTimeAgo = (date) => {
 
 const formatItems = (itemsData) => {
     try {
+        if (!itemsData) return [];
         const items = typeof itemsData === 'string' ? JSON.parse(itemsData) : itemsData;
         return Array.isArray(items) ? items : [];
     } catch (e) { return []; }
 };
 
 // ========================
-// 2. PRODUCTS LOGIC
+// 2. PRODUCTS LOGIC (Fixed Buckets)
 // ========================
 const newProduct = ref({ title: '', price: '', category: 'ម្ហូប', image: null, desc: '', imageFile: null });
 const isEditingProduct = ref(false);
 const editingProductId = ref(null);
 const productFileInput = ref(null);
 
-const fetchProducts = async () => { const { data } = await supabase.from('products').select('*').order('id', { ascending: false }); products.value = data || []; };
+const fetchProducts = async () => { 
+    const { data } = await supabase.from('products').select('*').order('id', { ascending: false }); 
+    products.value = data || []; 
+};
 
 const handleProductUpload = (event) => { 
     const file = event.target.files[0]; 
@@ -128,35 +143,75 @@ const handleProductUpload = (event) => {
 };
 
 const handleProductSubmit = async () => { 
-    if (!newProduct.value.title || !newProduct.value.price) return toast.show('Please fill info!', 'error');
+    if (!newProduct.value.title || !newProduct.value.price) return showNotification('Please fill info!', 'error');
     isSubmitting.value = true;
     try {
         let imageUrl = newProduct.value.image;
         if (newProduct.value.imageFile) {
             const fileExt = newProduct.value.imageFile.name.split('.').pop();
             const fileName = `prod_${Date.now()}.${fileExt}`;
-            await supabase.storage.from('images').upload(fileName, newProduct.value.imageFile);
-            const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+            
+            // 🔥 FIXED: Use 'products' bucket
+            await supabase.storage.from('products').upload(fileName, newProduct.value.imageFile);
+            const { data } = supabase.storage.from('products').getPublicUrl(fileName);
             imageUrl = data.publicUrl;
         }
-        const payload = { title: newProduct.value.title, price: parseFloat(newProduct.value.price), category: newProduct.value.category, description: newProduct.value.desc, image: imageUrl };
-        if (isEditingProduct.value) await supabase.from('products').update(payload).eq('id', editingProductId.value);
-        else await supabase.from('products').insert(payload);
-        toast.show('Success!', 'success'); resetProductForm(); fetchProducts();
-    } catch (err) { toast.show(err.message, 'error'); } finally { isSubmitting.value = false; }
+        
+        const payload = { 
+            title: newProduct.value.title, 
+            price: parseFloat(newProduct.value.price), 
+            category: newProduct.value.category, 
+            description: newProduct.value.desc, 
+            image: imageUrl // Now using the public URL
+        };
+
+        if (isEditingProduct.value) {
+            await supabase.from('products').update(payload).eq('id', editingProductId.value);
+        } else {
+            await supabase.from('products').insert(payload);
+        }
+        
+        showNotification('Product saved successfully!'); 
+        resetProductForm(); 
+        fetchProducts();
+    } catch (err) { 
+        console.error(err);
+        showNotification('Error saving product', 'error'); 
+    } finally { 
+        isSubmitting.value = false; 
+    }
 };
 
-const startEdit = (item) => { isEditingProduct.value = true; editingProductId.value = item.id; newProduct.value = { ...item, desc: item.description, imageFile: null }; };
-const deleteProduct = async (id) => { if(confirm("Delete?")) { await supabase.from('products').delete().eq('id', id); fetchProducts(); } };
-const resetProductForm = () => { isEditingProduct.value = false; editingProductId.value = null; newProduct.value = { title: '', price: '', category: 'ម្ហូប', image: null, desc: '', imageFile: null }; if(productFileInput.value) productFileInput.value.value = ''; };
+const startEdit = (item) => { 
+    isEditingProduct.value = true; 
+    editingProductId.value = item.id; 
+    newProduct.value = { ...item, desc: item.description, imageFile: null }; 
+};
+
+const deleteProduct = async (id) => { 
+    if(confirm("Are you sure you want to delete this product?")) { 
+        await supabase.from('products').delete().eq('id', id); 
+        fetchProducts(); 
+    } 
+};
+
+const resetProductForm = () => { 
+    isEditingProduct.value = false; 
+    editingProductId.value = null; 
+    newProduct.value = { title: '', price: '', category: 'ម្ហូប', image: null, desc: '', imageFile: null }; 
+    if(productFileInput.value) productFileInput.value.value = ''; 
+};
 
 // ========================
-// 3. BANNERS LOGIC
+// 3. BANNERS LOGIC (Fixed Buckets)
 // ========================
 const newBanner = ref({ title: '', subtitle: '', image: null, imageFile: null });
 const bannerFileInput = ref(null);
 
-const fetchBanners = async () => { const { data } = await supabase.from('banners').select('*').order('id', { ascending: false }); banners.value = data || []; };
+const fetchBanners = async () => { 
+    const { data } = await supabase.from('banners').select('*').order('id', { ascending: false }); 
+    banners.value = data || []; 
+};
 
 const handleBannerUpload = (event) => { 
     const file = event.target.files[0]; 
@@ -167,27 +222,48 @@ const handleBannerUpload = (event) => {
 };
 
 const handleBannerSubmit = async () => { 
-    if (!newBanner.value.imageFile) return toast.show('Please add image!', 'error');
+    if (!newBanner.value.imageFile) return showNotification('Please add image!', 'error');
     isSubmitting.value = true;
     try {
         const fileExt = newBanner.value.imageFile.name.split('.').pop();
         const fileName = `banner_${Date.now()}.${fileExt}`;
-        await supabase.storage.from('images').upload(fileName, newBanner.value.imageFile);
-        const { data } = supabase.storage.from('images').getPublicUrl(fileName);
-        await supabase.from('banners').insert({ image: data.publicUrl, title: newBanner.value.title, subtitle: newBanner.value.subtitle });
-        fetchBanners(); newBanner.value = { title: '', subtitle: '', image: null, imageFile: null };
-        toast.show('Success!', 'success');
-    } catch (err) { toast.show('Failed', 'error'); } finally { isSubmitting.value = false; }
+        
+        // 🔥 FIXED: Use 'banners' bucket
+        await supabase.storage.from('banners').upload(fileName, newBanner.value.imageFile);
+        const { data } = supabase.storage.from('banners').getPublicUrl(fileName);
+        
+        await supabase.from('banners').insert({ 
+            image: data.publicUrl, 
+            title: newBanner.value.title, 
+            subtitle: newBanner.value.subtitle 
+        });
+        
+        fetchBanners(); 
+        newBanner.value = { title: '', subtitle: '', image: null, imageFile: null };
+        showNotification('Banner added!');
+    } catch (err) { 
+        showNotification('Failed to add banner', 'error'); 
+    } finally { 
+        isSubmitting.value = false; 
+    }
 };
-const deleteBanner = async (id) => { if(confirm("Delete?")) { await supabase.from('banners').delete().eq('id', id); fetchBanners(); } };
+const deleteBanner = async (id) => { 
+    if(confirm("Delete this banner?")) { 
+        await supabase.from('banners').delete().eq('id', id); 
+        fetchBanners(); 
+    } 
+};
 
 // ========================
-// 4. CHEF LOGIC
+// 4. CHEF LOGIC (Fixed Buckets)
 // ========================
 const newChef = ref({ name: '', bio: '', image: null, imageFile: null });
 const chefFileInput = ref(null);
 
-const fetchChefs = async () => { const { data } = await supabase.from('chefs').select('*').order('id', { ascending: false }); chefs.value = data || []; };
+const fetchChefs = async () => { 
+    const { data } = await supabase.from('chefs').select('*').order('id', { ascending: false }); 
+    chefs.value = data || []; 
+};
 
 const handleChefUpload = (event) => { 
     const file = event.target.files[0]; 
@@ -198,23 +274,39 @@ const handleChefUpload = (event) => {
 };
 
 const handleChefSubmit = async () => {
-    if (!newChef.value.name) return toast.show('Add Name!', 'error');
+    if (!newChef.value.name) return showNotification('Add Name!', 'error');
     isSubmitting.value = true;
     try {
         let imgUrl = newChef.value.image;
         if(newChef.value.imageFile) {
             const fileExt = newChef.value.imageFile.name.split('.').pop();
             const fileName = `chef_${Date.now()}.${fileExt}`;
-            await supabase.storage.from('images').upload(fileName, newChef.value.imageFile);
-            const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+            
+            // 🔥 FIXED: Use 'chefs' bucket
+            await supabase.storage.from('chefs').upload(fileName, newChef.value.imageFile);
+            const { data } = supabase.storage.from('chefs').getPublicUrl(fileName);
             imgUrl = data.publicUrl;
         }
-        await supabase.from('chefs').insert({ name: newChef.value.name, bio: newChef.value.bio, image: imgUrl });
-        fetchChefs(); newChef.value = { name: '', bio: '', image: null, imageFile: null };
-        toast.show('Success!', 'success');
-    } catch (err) { toast.show('Failed', 'error'); } finally { isSubmitting.value = false; }
+        await supabase.from('chefs').insert({ 
+            name: newChef.value.name, 
+            bio: newChef.value.bio, 
+            image: imgUrl 
+        });
+        fetchChefs(); 
+        newChef.value = { name: '', bio: '', image: null, imageFile: null };
+        showNotification('Chef added!');
+    } catch (err) { 
+        showNotification('Failed to add chef', 'error'); 
+    } finally { 
+        isSubmitting.value = false; 
+    }
 };
-const deleteChef = async (id) => { if(confirm("Delete?")) { await supabase.from('chefs').delete().eq('id', id); fetchChefs(); } };
+const deleteChef = async (id) => { 
+    if(confirm("Delete this chef?")) { 
+        await supabase.from('chefs').delete().eq('id', id); 
+        fetchChefs(); 
+    } 
+};
 
 onMounted(() => {
   fetchOrders();
@@ -344,7 +436,7 @@ onMounted(() => {
             <h2 class="font-black text-xl text-gray-800">All Users ({{ users.length }})</h2>
             <button @click="fetchUsers" class="p-2 bg-white border rounded-lg text-sm font-bold hover:bg-gray-50 text-gray-600">🔄 Refresh</button>
         </div>
-        <div v-if="users.length === 0" class="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300"><p class="text-gray-400">No users have logged in yet.</p></div>
+        <div v-if="users.length === 0" class="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300"><p class="text-gray-400">No users found.</p></div>
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
              <div v-for="user in users" :key="user.id" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between relative overflow-hidden">
                  <div class="absolute top-0 right-0 p-3">
@@ -353,7 +445,7 @@ onMounted(() => {
                  </div>
                  <div class="flex items-center gap-4">
                      <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-2xl">👤</div>
-                     <div><p class="font-black text-lg text-slate-800">{{ user.phone }}</p><p class="text-xs text-gray-500">Last Seen: {{ formatTimeAgo(user.last_seen) }}</p></div>
+                     <div><p class="font-black text-lg text-slate-800">{{ user.phone || 'No Phone' }}</p><p class="text-xs text-gray-500">Last Seen: {{ formatTimeAgo(user.last_seen) }}</p></div>
                  </div>
              </div>
         </div>
@@ -431,7 +523,7 @@ onMounted(() => {
 
     <div v-if="activeTab === 'chef'" class="flex flex-col gap-8">
          <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-            <h2 class="font-black text-xl mb-4 text-gray-800">Add Chef (សម្រាប់ Banner ខាងឆ្វេង)</h2>
+            <h2 class="font-black text-xl mb-4 text-gray-800">Add Chef</h2>
             <div class="flex flex-col md:flex-row gap-4 items-start">
                  <div class="w-32 h-32 bg-slate-50 rounded-full overflow-hidden border-2 border-dashed border-gray-300 flex items-center justify-center relative cursor-pointer hover:border-green-500 flex-shrink-0">
                      <img v-if="newChef.image" :src="newChef.image" class="w-full h-full object-cover" />
