@@ -1,17 +1,22 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { supabase } from '../supabase'; 
+import { useAuthStore } from '../stores/auth'; // 🔥 1. Import Store ដើម្បីយក Password
+
+// ហៅ Store មកប្រើ
+const authStore = useAuthStore();
 
 // ==========================================
 // 🔐 ផ្នែកកំណត់ Password (ADMIN SECURITY)
 // ==========================================
-const ADMIN_PASSWORD = "admin123@@##%%"; // 🔥 លេខសម្ងាត់ (បងអាចដូរនៅកន្លែងនេះ)
 const inputPassword = ref('');
-const isUnlocked = ref(false); // ស្ថានភាពថាតើដោះសោរហើយឬនៅ?
+const isUnlocked = ref(false);
 
 const unlockAdmin = () => {
-    if (inputPassword.value === ADMIN_PASSWORD) {
-        isUnlocked.value = true; // បើត្រូវ ឱ្យបង្ហាញផ្ទាំង Admin
+    // 🔥 2. ហៅទៅ Store ដើម្បីឆែក Password (ជំនួសឱ្យការដាក់លេខនៅទីនេះ)
+    if (authStore.verifyAdminPassword(inputPassword.value)) {
+        isUnlocked.value = true; 
+        
         // ចាប់ផ្តើមទាញទិន្នន័យពេលចូលបាន
         fetchOrders();
         fetchProducts();
@@ -42,6 +47,7 @@ const users = ref([]);
 
 // Helper: Notification
 const showNotification = (msg, type = 'success') => {
+    // ប្រើ Alert សិន (ឬបងអាចប្រើ Toast Store របស់បងបាន)
     alert(`${type === 'success' ? '✅' : '❌'} ${msg}`);
 };
 
@@ -53,7 +59,7 @@ const fetchUsers = async () => {
       const { data, error } = await supabase.from('app_users').select('*');
       if (!error) users.value = data || [];
   } catch (err) {
-      console.log("Skipping users fetch (Table might not exist)");
+      console.log("Skipping users fetch");
   }
 };
 
@@ -165,6 +171,7 @@ const handleProductSubmit = async () => {
         if (newProduct.value.imageFile) {
             const fileExt = newProduct.value.imageFile.name.split('.').pop();
             const fileName = `prod_${Date.now()}.${fileExt}`;
+            // 🔥 Upload to 'products' bucket
             await supabase.storage.from('products').upload(fileName, newProduct.value.imageFile);
             const { data } = supabase.storage.from('products').getPublicUrl(fileName);
             imageUrl = data.publicUrl;
@@ -240,6 +247,7 @@ const handleBannerSubmit = async () => {
     try {
         const fileExt = newBanner.value.imageFile.name.split('.').pop();
         const fileName = `banner_${Date.now()}.${fileExt}`;
+        // 🔥 Upload to 'banners' bucket
         await supabase.storage.from('banners').upload(fileName, newBanner.value.imageFile);
         const { data } = supabase.storage.from('banners').getPublicUrl(fileName);
         
@@ -292,6 +300,7 @@ const handleChefSubmit = async () => {
         if(newChef.value.imageFile) {
             const fileExt = newChef.value.imageFile.name.split('.').pop();
             const fileName = `chef_${Date.now()}.${fileExt}`;
+            // 🔥 Upload to 'chefs' bucket
             await supabase.storage.from('chefs').upload(fileName, newChef.value.imageFile);
             const { data } = supabase.storage.from('chefs').getPublicUrl(fileName);
             imgUrl = data.publicUrl;
@@ -316,8 +325,6 @@ const deleteChef = async (id) => {
         fetchChefs(); 
     } 
 };
-
-// onMounted លែងត្រូវការហៅទិន្នន័យទៀតហើយ (ព្រោះយើងហៅក្នុង unlockAdmin វិញ)
 </script>
 
 <template>
@@ -344,6 +351,7 @@ const deleteChef = async (id) => {
     </div>
 
     <div v-else>
+        
         <div class="flex flex-col xl:flex-row justify-between items-center mb-8 gap-4">
             <h1 class="text-3xl font-black text-slate-800 tracking-tight">Admin Dashboard</h1>
             
@@ -361,9 +369,7 @@ const deleteChef = async (id) => {
         </div>
 
         <div v-if="activeTab === 'orders'" class="space-y-6">
-            
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center">
-                
                 <div class="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 hide-scrollbar">
                     <button @click="orderFilter = 'all'" :class="orderFilter === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" class="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors">ទាំងអស់</button>
                     <button @click="orderFilter = 'pending'" :class="orderFilter === 'pending' ? 'bg-yellow-500 text-white' : 'bg-yellow-50 text-yellow-600'" class="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors">Pending ({{ orders.filter(o => o.status === 'pending').length }})</button>
@@ -371,12 +377,10 @@ const deleteChef = async (id) => {
                     <button @click="orderFilter = 'delivering'" :class="orderFilter === 'delivering' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'" class="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors">Delivering</button>
                     <button @click="orderFilter = 'completed'" :class="orderFilter === 'completed' ? 'bg-green-500 text-white' : 'bg-green-50 text-green-600'" class="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors">Completed</button>
                 </div>
-
                 <div class="relative w-full md:w-64">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">🔍</span>
                     <input v-model="searchQuery" placeholder="ស្វែងរកឈ្មោះ ឬលេខទូរស័ព្ទ..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-orange-200" />
                 </div>
-                
                 <button @click="fetchOrders" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 transition-colors" title="Refresh">🔄</button>
             </div>
 
@@ -386,17 +390,10 @@ const deleteChef = async (id) => {
 
             <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 <div v-for="order in filteredOrders" :key="order.id" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
-                    
                     <div class="px-6 py-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
-                        <div>
-                            <span class="text-xs font-bold text-gray-400 block">ORDER ID</span>
-                            <span class="text-lg font-black text-slate-800">#{{ order.id }}</span>
-                        </div>
-                        <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border" :class="getStatusColor(order.status)">
-                            {{ order.status }}
-                        </span>
+                        <div><span class="text-xs font-bold text-gray-400 block">ORDER ID</span><span class="text-lg font-black text-slate-800">#{{ order.id }}</span></div>
+                        <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border" :class="getStatusColor(order.status)">{{ order.status }}</span>
                     </div>
-
                     <div class="p-6 flex-grow">
                         <div class="flex items-start gap-4 mb-6">
                             <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg">👤</div>
@@ -407,7 +404,6 @@ const deleteChef = async (id) => {
                                 <p class="text-[10px] text-gray-400 mt-1">{{ formatDate(order.created_at) }}</p>
                             </div>
                         </div>
-
                         <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-4">
                             <p class="text-xs font-bold text-gray-400 mb-2 uppercase">មុខម្ហូប</p>
                             <ul class="space-y-2">
@@ -417,53 +413,24 @@ const deleteChef = async (id) => {
                             </ul>
                         </div>
                     </div>
-
                     <div class="px-6 py-4 bg-gray-50 border-t border-gray-100">
-                        <div class="flex justify-between items-center mb-4">
-                            <span class="text-sm font-bold text-gray-500">សរុបទឹកប្រាក់</span>
-                            <span class="text-2xl font-black text-orange-600">${{ order.total_price }}</span>
-                        </div>
-
-                        <div v-if="order.receipt_url" class="mb-4">
-                            <a :href="order.receipt_url" target="_blank" class="block w-full text-center py-2 rounded-xl bg-blue-50 text-blue-600 text-xs font-bold border border-blue-100 hover:bg-blue-100 transition-colors">
-                                🧾 មើលវិក្កយបត្រ (Slip)
-                            </a>
-                        </div>
-                        <div v-else class="mb-4 text-center">
-                            <span class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">💵 បង់លុយផ្ទាល់</span>
-                        </div>
-
+                        <div class="flex justify-between items-center mb-4"><span class="text-sm font-bold text-gray-500">សរុបទឹកប្រាក់</span><span class="text-2xl font-black text-orange-600">${{ order.total_price }}</span></div>
+                        <div v-if="order.receipt_url" class="mb-4"><a :href="order.receipt_url" target="_blank" class="block w-full text-center py-2 rounded-xl bg-blue-50 text-blue-600 text-xs font-bold border border-blue-100 hover:bg-blue-100 transition-colors">🧾 មើលវិក្កយបត្រ (Slip)</a></div>
+                        <div v-else class="mb-4 text-center"><span class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">💵 បង់លុយផ្ទាល់</span></div>
                         <div class="grid grid-cols-2 gap-2" v-if="order.status !== 'completed' && order.status !== 'rejected'">
-                            <button v-if="order.status === 'pending'" @click="updateOrderStatus(order.id, 'cooking')" class="col-span-2 py-3 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 shadow-orange-200 shadow-md transition-all">
-                                👨‍🍳 ចាប់ផ្តើមធ្វើ (Cooking)
-                            </button>
-                            
-                            <button v-if="order.status === 'cooking'" @click="updateOrderStatus(order.id, 'delivering')" class="col-span-2 py-3 bg-blue-500 text-white rounded-xl font-bold text-sm hover:bg-blue-600 shadow-blue-200 shadow-md transition-all">
-                                🛵 ចាប់ផ្តើមដឹក (Deliver)
-                            </button>
-
-                            <button v-if="order.status === 'delivering'" @click="updateOrderStatus(order.id, 'completed')" class="col-span-2 py-3 bg-green-500 text-white rounded-xl font-bold text-sm hover:bg-green-600 shadow-green-200 shadow-md transition-all">
-                                ✅ ជោគជ័យ (Completed)
-                            </button>
-
-                            <button v-if="order.status === 'pending'" @click="updateOrderStatus(order.id, 'rejected')" class="col-span-2 py-2 border border-red-100 text-red-500 rounded-xl font-bold text-xs hover:bg-red-50 transition-all">
-                                បដិសេធ (Reject)
-                            </button>
+                            <button v-if="order.status === 'pending'" @click="updateOrderStatus(order.id, 'cooking')" class="col-span-2 py-3 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 shadow-orange-200 shadow-md transition-all">👨‍🍳 ចាប់ផ្តើមធ្វើ (Cooking)</button>
+                            <button v-if="order.status === 'cooking'" @click="updateOrderStatus(order.id, 'delivering')" class="col-span-2 py-3 bg-blue-500 text-white rounded-xl font-bold text-sm hover:bg-blue-600 shadow-blue-200 shadow-md transition-all">🛵 ចាប់ផ្តើមដឹក (Deliver)</button>
+                            <button v-if="order.status === 'delivering'" @click="updateOrderStatus(order.id, 'completed')" class="col-span-2 py-3 bg-green-500 text-white rounded-xl font-bold text-sm hover:bg-green-600 shadow-green-200 shadow-md transition-all">✅ ជោគជ័យ (Completed)</button>
+                            <button v-if="order.status === 'pending'" @click="updateOrderStatus(order.id, 'rejected')" class="col-span-2 py-2 border border-red-100 text-red-500 rounded-xl font-bold text-xs hover:bg-red-50 transition-all">បដិសេធ (Reject)</button>
                         </div>
-                        
-                        <div v-else class="text-center py-2">
-                            <span class="text-sm font-bold text-gray-400">ត្រូវបានបញ្ចប់</span>
-                        </div>
+                        <div v-else class="text-center py-2"><span class="text-sm font-bold text-gray-400">ត្រូវបានបញ្ចប់</span></div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div v-if="activeTab === 'users'" class="space-y-6">
-            <div class="flex justify-between items-center">
-                <h2 class="font-black text-xl text-gray-800">All Users ({{ users.length }})</h2>
-                <button @click="fetchUsers" class="p-2 bg-white border rounded-lg text-sm font-bold hover:bg-gray-50 text-gray-600">🔄 Refresh</button>
-            </div>
+            <div class="flex justify-between items-center"><h2 class="font-black text-xl text-gray-800">All Users ({{ users.length }})</h2><button @click="fetchUsers" class="p-2 bg-white border rounded-lg text-sm font-bold hover:bg-gray-50 text-gray-600">🔄 Refresh</button></div>
             <div v-if="users.length === 0" class="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300"><p class="text-gray-400">No users found.</p></div>
             <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div v-for="user in users" :key="user.id" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between relative overflow-hidden">
@@ -486,9 +453,7 @@ const deleteChef = async (id) => {
                     <input v-model="newProduct.title" placeholder="Food Name..." class="w-full p-3 bg-slate-50 rounded-xl border font-bold" />
                     <div class="flex gap-2">
                         <input v-model="newProduct.price" type="number" placeholder="Price ($)" class="w-1/2 p-3 bg-slate-50 rounded-xl border font-bold" />
-                        <select v-model="newProduct.category" class="w-1/2 p-3 bg-slate-50 rounded-xl border font-bold">
-                            <option>ម្ហូប</option><option>ចៀន</option><option>សម្ល</option><option>ឆា</option><option>ភេសជ្ជៈ</option><option>បង្អែម</option>
-                        </select>
+                        <select v-model="newProduct.category" class="w-1/2 p-3 bg-slate-50 rounded-xl border font-bold"><option>ម្ហូប</option><option>ចៀន</option><option>សម្ល</option><option>ឆា</option><option>ភេសជ្ជៈ</option><option>បង្អែម</option></select>
                     </div>
                     <textarea v-model="newProduct.desc" placeholder="Description..." class="w-full p-3 bg-slate-50 rounded-xl border"></textarea>
                     <div class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center cursor-pointer hover:bg-gray-50 relative">
@@ -498,9 +463,7 @@ const deleteChef = async (id) => {
                     </div>
                     <div class="flex gap-2">
                         <button v-if="isEditingProduct" @click="resetProductForm" class="flex-1 py-3 bg-gray-200 rounded-xl font-bold">Cancel</button>
-                        <button @click="handleProductSubmit" :disabled="isSubmitting" class="flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold">
-                            {{ isSubmitting ? '...' : (isEditingProduct ? 'Save' : 'Add') }}
-                        </button>
+                        <button @click="handleProductSubmit" :disabled="isSubmitting" class="flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold">{{ isSubmitting ? '...' : (isEditingProduct ? 'Save' : 'Add') }}</button>
                     </div>
                 </div>
             </div>
@@ -508,14 +471,8 @@ const deleteChef = async (id) => {
                 <h3 class="font-bold mb-4">Food List ({{ products.length }})</h3>
                 <div class="grid gap-3">
                     <div v-for="p in products" :key="p.id" class="flex items-center justify-between p-3 border rounded-xl hover:bg-slate-50">
-                        <div class="flex items-center gap-3">
-                            <img :src="p.image" class="w-12 h-12 rounded-lg object-cover" />
-                            <div><p class="font-bold">{{ p.title }}</p><p class="text-orange-600 font-bold">${{ p.price }}</p></div>
-                        </div>
-                        <div class="flex gap-2">
-                            <button @click="startEdit(p)" class="p-2 bg-blue-50 text-blue-600 rounded-lg">✏️</button>
-                            <button @click="deleteProduct(p.id)" class="p-2 bg-red-50 text-red-600 rounded-lg">🗑️</button>
-                        </div>
+                        <div class="flex items-center gap-3"><img :src="p.image" class="w-12 h-12 rounded-lg object-cover" /><div><p class="font-bold">{{ p.title }}</p><p class="text-orange-600 font-bold">${{ p.price }}</p></div></div>
+                        <div class="flex gap-2"><button @click="startEdit(p)" class="p-2 bg-blue-50 text-blue-600 rounded-lg">✏️</button><button @click="deleteProduct(p.id)" class="p-2 bg-red-50 text-red-600 rounded-lg">🗑️</button></div>
                     </div>
                 </div>
             </div>
@@ -540,10 +497,7 @@ const deleteChef = async (id) => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div v-for="b in banners" :key="b.id" class="relative group h-48 rounded-2xl overflow-hidden shadow-sm">
                     <img :src="b.image" class="w-full h-full object-cover" />
-                    <div class="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
-                        <p class="font-bold">{{ b.title }}</p>
-                        <p class="text-xs opacity-80">{{ b.subtitle }}</p>
-                    </div>
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent text-white"><p class="font-bold">{{ b.title }}</p><p class="text-xs opacity-80">{{ b.subtitle }}</p></div>
                     <button @click="deleteBanner(b.id)" class="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">🗑️</button>
                 </div>
             </div>
@@ -554,14 +508,10 @@ const deleteChef = async (id) => {
                 <h2 class="font-black text-xl mb-4 text-gray-800">Add Chef</h2>
                 <div class="flex flex-col md:flex-row gap-4 items-start">
                     <div class="w-32 h-32 bg-slate-50 rounded-full overflow-hidden border-2 border-dashed border-gray-300 flex items-center justify-center relative cursor-pointer hover:border-green-500 flex-shrink-0">
-                        <img v-if="newChef.image" :src="newChef.image" class="w-full h-full object-cover" />
-                        <span v-else class="text-2xl text-gray-400">📷</span>
+                        <img v-if="newChef.image" :src="newChef.image" class="w-full h-full object-cover" /><span v-else class="text-2xl text-gray-400">📷</span>
                         <input ref="chefFileInput" type="file" @change="handleChefUpload" class="absolute inset-0 opacity-0 cursor-pointer" />
                     </div>
-                    <div class="flex-1 space-y-3 w-full">
-                        <input v-model="newChef.name" placeholder="Chef Name..." class="w-full p-3 bg-slate-50 rounded-xl border font-bold" />
-                        <textarea v-model="newChef.bio" placeholder="Bio..." class="w-full p-3 bg-slate-50 rounded-xl border"></textarea>
-                    </div>
+                    <div class="flex-1 space-y-3 w-full"><input v-model="newChef.name" placeholder="Chef Name..." class="w-full p-3 bg-slate-50 rounded-xl border font-bold" /><textarea v-model="newChef.bio" placeholder="Bio..." class="w-full p-3 bg-slate-50 rounded-xl border"></textarea></div>
                     <button @click="handleChefSubmit" :disabled="isSubmitting" class="px-8 py-3 bg-green-600 text-white font-bold rounded-xl h-fit self-end w-full md:w-auto hover:bg-green-700">Add Chef</button>
                 </div>
             </div>
