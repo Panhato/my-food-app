@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 // ==========================================
 // 🔐 ផ្នែកកំណត់ Password (ADMIN SECURITY)
 // ==========================================
-const ADMIN_PASSWORD = "1234"; // 🔥 លេខសម្ងាត់ (បងអាចដូរនៅកន្លែងនេះ)
+const ADMIN_PASSWORD = "admin123@@##%%"; // 🔥 លេខសម្ងាត់ (បងអាចដូរនៅកន្លែងនេះ)
 const inputPassword = ref('');
 const isUnlocked = ref(false); // ស្ថានភាពថាតើដោះសោរហើយឬនៅ?
 
