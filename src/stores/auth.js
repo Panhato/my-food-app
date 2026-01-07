@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   // ==========================================
   
   // 1. កំណត់លេខសម្ងាត់សម្រាប់ចូល Admin
-  const ADMIN_CODE = "1234"; 
+  const ADMIN_CODE = "1234panha"; 
 
   // 2. កំណត់បញ្ជី Email ដែលជា Admin (ថែមឈ្មោះនៅទីនេះស្រួលជាង)
   const adminEmails = [
