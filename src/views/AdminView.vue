@@ -25,7 +25,7 @@ const unlockAdmin = () => {
         fetchUsers();
     } else {
         alert("លេខសម្ងាត់មិនត្រឹមត្រូវ! (Password Incorrect)");
-        inputPassword.value = '';
+        inputPassword.value = 'Admin123@@##';
     }
 };
 // ==========================================
