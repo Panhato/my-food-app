@@ -11,47 +11,52 @@ export const useAuthStore = defineStore('auth', () => {
   // 🔥🔥🔥 កន្លែងកំណត់ ADMIN (SETTINGS) 🔥🔥🔥
   // ==========================================
   
-  // 1. កំណត់លេខសម្ងាត់សម្រាប់ចូល Admin
+  // 1. កំណត់លេខសម្ងាត់សម្រាប់ដោះសោរទំព័រ Admin
   const ADMIN_CODE = "1234Admin##$$"; 
 
-  // 2. កំណត់បញ្ជី Email ដែលជា Admin (ថែមឈ្មោះនៅទីនេះស្រួលជាង)
+  // 2. បញ្ជី Email ដែលមានសិទ្ធិចូលប្រើមុខងារ Admin
   const adminEmails = [
       'admin@gmail.com',
       'chanro7080@gmail.com',
-      'mengpanha@gmail.com'  // ✅ ថែមឈ្មោះប៉ុន្មាននាក់ក៏បាន
+      'mengpanha@gmail.com',
+     'jeeson833@gmail.com',
   ];
 
-  // Function ផ្ទៀងផ្ទាត់លេខសម្ងាត់ (សម្រាប់ AdminView)
+  /**
+   * ផ្ទៀងផ្ទាត់លេខសម្ងាត់ Admin
+   */
   const verifyAdminPassword = (input) => {
       return input === ADMIN_CODE;
-  }
+  };
 
+  /**
+   * ពិនិត្យថាអ្នកដែលកំពុង Login ជា Admin ឬអត់
+   */
+  const isAdmin = () => {
+      if (!user.value) return false;
+      return user.value?.user_metadata?.role === 'admin' || 
+             adminEmails.includes(user.value?.email);
+  };
   // ==========================================
 
-  // 🔥 0. Listener
+  // 🔥 0. Listener: តាមដានស្ថានភាព User
   supabase.auth.onAuthStateChange((event, session) => {
-    if (session) {
-      user.value = session.user;
-    } else {
-      user.value = null;
-    }
+    if (session) user.value = session.user;
+    else user.value = null;
   });
 
   // 🔥 1. Load User
   const loadUser = async () => {
     const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      user.value = data.user;
-    }
+    if (data.user) user.value = data.user;
   };
 
   // 🔥 2. Login
   const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
+      email,
+      password
     });
-
     if (error) throw error;
     return true;
   };
@@ -59,56 +64,30 @@ export const useAuthStore = defineStore('auth', () => {
   // 🔥 3. Register
   const register = async (email, password, username, phone) => {
     const { data, error } = await supabase.auth.signUp({
-      email: email,
-      password: password,
+      email,
+      password,
       options: {
-        data: { 
-            username: username, 
-            phone: phone,
-            role: 'user', 
-            avatar: null
-        }
+        data: { username, phone, role: 'user', avatar: null }
       }
     });
-
     if (error) throw error;
-
-    if (data.session) {
-      user.value = data.user;
-    }
-
+    if (data.session) user.value = data.user;
     return true;
   };
 
   // 🔥 4. Update Profile
   const updateProfile = async (updates) => {
-    let payload = {};
-
-    if (updates.password) {
-        payload = { password: updates.password };
-    } else {
-        payload = { data: updates };
-    }
-
+    const payload = updates.password ? { password: updates.password } : { data: updates };
     const { data, error } = await supabase.auth.updateUser(payload);
-
     if (error) throw error;
-    
-    if (data.user) {
-        user.value = data.user;
-    }
-    
+    if (data.user) user.value = data.user;
     return true;
   };
 
   // 🔥 5. Reset Password
   const resetPasswordEmail = async (email) => {
     const redirectUrl = window.location.origin + '/update-password';
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl, 
-    });
-    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl });
     if (error) throw error;
     return true;
   };
@@ -118,7 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await supabase.auth.signOut();
     } catch (error) {
-      console.error("Logout error (Supabase):", error);
+      console.error("Logout error:", error);
     } finally {
       user.value = null;
       localStorage.clear(); 
@@ -126,15 +105,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  // Getters
   const isAuthenticated = () => !!user.value;
-  
-  // 🔥 កែសម្រួល៖ ឆែកមើលថាតើ Email មានក្នុងបញ្ជី adminEmails ខាងលើដែរឬទេ?
-  const isAdmin = () => {
-      if (!user.value) return false;
-      return user.value?.user_metadata?.role === 'admin' || 
-             adminEmails.includes(user.value?.email);
-  };
 
   return { 
     user, 
@@ -146,6 +117,6 @@ export const useAuthStore = defineStore('auth', () => {
     resetPasswordEmail, 
     isAuthenticated, 
     isAdmin,
-    verifyAdminPassword // 🔥 កុំភ្លេច Return អាហ្នឹងផង
+    verifyAdminPassword 
   };
 });
