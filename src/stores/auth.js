@@ -14,14 +14,14 @@ export const useAuthStore = defineStore('auth', () => {
   // 1. កំណត់លេខសម្ងាត់សម្រាប់ដោះសោរទំព័រ Admin
   const ADMIN_CODE = "1234Admin##$$$"; 
 
-  // 2. បញ្ជី Email ដែលមានសិទ្ធិចូលប្រើមុខងារ Admin
+// 2. បញ្ជី Email ដែលមានសិទ្ធិចូលប្រើមុខងារ Admin
   const adminEmails = [
       'admin@gmail.com',
       'chanro7080@gmail.com',
       'mengpanha@gmail.com',
-     'jeeson833@gmail.com',
+      'jeeson833@gmail.com', // អ៊ីមែលចាស់របស់អ្នក
+      'jeeson83@gmail.com'   // 🔥 បន្ថែមអ៊ីមែលថ្មីពីក្នុងរូបភាពនៅទីនេះ
   ];
-
   /**
    * ផ្ទៀងផ្ទាត់លេខសម្ងាត់ Admin
    */
