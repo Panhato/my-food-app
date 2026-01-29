@@ -9,7 +9,7 @@ const authStore = useAuthStore();
 // ==========================================
 // 🔐 ផ្នែកកំណត់ Password (ADMIN SECURITY)
 // ==========================================
-const inputPassword = ref('Admin123@@##');
+const inputPassword = ref('');
 const isUnlocked = ref(false);
 
 const unlockAdmin = () => {
