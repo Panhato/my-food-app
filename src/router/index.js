@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { useAuthStore } from '../stores/auth'; // 🔥 1. Import Auth Store
+import { useAuthStore } from '../stores/auth'; 
 
-// Views
+// Views (រក្សានៅដដែល)
 import HomeView from '../views/HomeView.vue';
 import MenuView from '../views/MenuView.vue';
 import AboutView from '../views/AboutView.vue';
@@ -31,7 +31,7 @@ const router = createRouter({
     { path: '/forgot-password', name: 'forgot-password', component: ForgotPasswordView },
     { path: '/update-password', name: 'update-password', component: UpdatePasswordView },
 
-    // 🔥 2. Profile (ត្រូវការ Login)
+    // 👤 Profile (ត្រូវការ Login)
     { 
       path: '/profile', 
       name: 'profile', 
@@ -39,43 +39,40 @@ const router = createRouter({
       meta: { requiresAuth: true } 
     },
 
-    // 🔥 3. Admin (ត្រូវការ Login + ជា Admin)
+    // 🛡️ Admin (ត្រូវការ Login + ជា Admin ពិតប្រាកដ)
     { 
       path: '/admin', 
       name: 'admin', 
       component: AdminView,
-      meta: { requiresAuth: true, requiresAdmin: true } // ដាក់ទាំងពីរដើម្បីសុវត្ថិភាព
+      meta: { requiresAuth: true, requiresAdmin: true } 
     }, 
   ]
 });
 
-// 🔥 4. Global Guard (អ្នកយាមផ្លូវ)
+// 👮 Global Guard (អ្នកយាមផ្លូវ)
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
-  // ជំហានទី ១: ឆែកមើលថាមាន User នៅ? បើអត់មាន សាក Load ពី Supabase
+  // ១. ទាញទិន្នន័យ User បើមិនទាន់មាន (Session Persistence)
   if (!authStore.user) {
     await authStore.loadUser();
   }
 
-  // ជំហានទី ២: ការពារផ្លូវដែលត្រូវការ Login (General Auth)
+  // ២. បើផ្លូវនោះត្រូវការ Login តែគាត់មិនទាន់ Login ទេ -> បញ្ជូនទៅទំព័រ Login
   if (to.meta.requiresAuth && !authStore.isAuthenticated()) {
-    // បើមិនទាន់ Login -> បញ្ជូនទៅទំព័រ Login
     return next('/login');
   }
 
-  // ជំហានទី ៣: ការពារផ្លូវ Admin (Admin Only)
+  // ៣. បើផ្លូវនោះសម្រាប់តែ Admin តែគាត់មិនមែនជា Admin ក្នុងបញ្ជីទេ
   if (to.meta.requiresAdmin) {
-    // ដោយសារយើងដាក់ requiresAuth ខាងលើហើយ មិនបាច់ឆែក isAuthenticated ម្តងទៀតទេ
-    // គ្រាន់តែឆែកថាជា Admin ឬអត់?
+    // ឆែក Email ក្នុងបញ្ជី adminEmails ពី auth.js
     if (!authStore.isAdmin()) {
-       alert("សូមអភ័យទោស! អ្នកមិនមានសិទ្ធិចូលមើលទំព័រនេះទេ។ (Admin Only)");
-       return next('/'); // បើមិនមែន Admin ឱ្យទៅផ្ទះវិញ
+      alert("សូមអភ័យទោស! អ្នកមិនមានសិទ្ធិចូលមើលទំព័រនេះទេ។ (Admin Only)");
+      return next('/'); // ដេញទៅទំព័រដើម
     }
   }
 
-  // បើគ្មានបញ្ហា ឱ្យទៅមុខ
-  next();
+  next(); // អនុញ្ញាតឱ្យទៅមុខ
 });
 
 export default router;
