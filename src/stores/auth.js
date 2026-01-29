@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   // ==========================================
   
   // 1. កំណត់លេខសម្ងាត់សម្រាប់ដោះសោរទំព័រ Admin
-  const ADMIN_CODE = "#1234Admin#$$$"; 
+  const ADMIN_CODE = "1234Admin"; 
 
 // 2. បញ្ជី Email ដែលមានសិទ្ធិចូលប្រើមុខងារ Admin
   const adminEmails = [
