@@ -196,7 +196,7 @@ onMounted(async () => {
 
                 <div class="mt-8 flex justify-center md:hidden">
                     <RouterLink to="/menu" class="w-full py-3 bg-slate-100 text-slate-600 font-bold rounded-xl text-center hover:bg-slate-200">
-                        មើលម្ហូបទាំងអស់
+                        មើលម្ហូបទាំងអស់SSSSSSSSSSSSSS
                     </RouterLink>
                 </div>
             </div>
