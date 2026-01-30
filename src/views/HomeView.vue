@@ -122,7 +122,7 @@ onMounted(async () => {
         
         <div class="flex justify-between items-end mb-6">
             <div>
-                <p class="text-orange-600 font-bold mb-1 uppercase tracking-wider text-xs">ណែនាំសម្រាប់លោកអ្នក</p>
+                <p class="text-orange-600 font-bold mb-1 uppercase tracking-wider text-xs">ណែនាំសម្រាប់លោកអ្នកssssssss</p>
                 <h2 class="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-2">
                     🔥 ម្ហូបពេញនិយមប្រចាំថ្ងៃ
                 </h2>
@@ -196,7 +196,7 @@ onMounted(async () => {
 
                 <div class="mt-8 flex justify-center md:hidden">
                     <RouterLink to="/menu" class="w-full py-3 bg-slate-100 text-slate-600 font-bold rounded-xl text-center hover:bg-slate-200">
-                        មើលម្ហូបទាំងអស់SSSSSSSSSSSSSS
+                        មើលម្ហូបទាំងអស់
                     </RouterLink>
                 </div>
             </div>
