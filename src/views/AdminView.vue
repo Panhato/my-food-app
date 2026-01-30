@@ -7,17 +7,17 @@ import { useRouter } from 'vue-router';
 const authStore = useAuthStore();
 const router = useRouter();
 
-// --- State គ្រប់គ្រងទិន្នន័យដើម ---
+// --- State គ្រប់គ្រងទិន្នន័យ (រក្សានៅដដែល) ---
 const activeTab = ref('orders'); 
 const orders = ref([]);
 const products = ref([]);
-const banners = ref([]); // 🔥 បន្ថែមសម្រាប់ Banner
+const banners = ref([]); 
 const loading = ref(false);
 
 // State សម្រាប់បន្ថែមម្ហូបថ្មី
 const newProduct = ref({ title: '', price: '', image: '', category: 'food' });
 const isAdding = ref(false);
-const isUploading = ref(false); // 🔥 សម្រាប់ស្ថានភាព Upload រូបភាព
+const isUploading = ref(false); 
 
 onMounted(async () => {
     if (!authStore.isAdmin()) {
@@ -29,20 +29,16 @@ onMounted(async () => {
 
 const fetchAllData = async () => {
     loading.value = true;
-    // ទាញទិន្នន័យ Orders
     const { data: o } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
     orders.value = o || [];
-    // ទាញទិន្នន័យ Products
     const { data: p } = await supabase.from('products').select('*').order('id', { ascending: false });
     products.value = p || [];
-    // 🔥 ទាញទិន្នន័យ Banners
     const { data: b } = await supabase.from('banners').select('*').order('id', { ascending: false });
     banners.value = b || [];
-    
     loading.value = false;
 };
 
-// 🔥 មុខងារ Upload រូបភាពទៅ Supabase Storage
+// 🔥 មុខងារ Upload រូបភាពទៅ Supabase Storage (រក្សានៅដដែល)
 const handleFileUpload = async (event, target) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -51,7 +47,6 @@ const handleFileUpload = async (event, target) => {
     const fileName = `${Date.now()}_${file.name}`;
     const filePath = `uploads/${fileName}`;
 
-    // បង្ហោះទៅ Bucket ឈ្មោះ 'food-images' (បងត្រូវប្រាកដថាបានបង្កើត Bucket នេះក្នុង Supabase)
     const { error: uploadError } = await supabase.storage
         .from('food-images')
         .upload(filePath, file);
@@ -62,26 +57,24 @@ const handleFileUpload = async (event, target) => {
         return;
     }
 
-    // ទាញយក Public URL
     const { data } = supabase.storage.from('food-images').getPublicUrl(filePath);
     
     if (target === 'product') {
         newProduct.value.image = data.publicUrl;
     } else if (target === 'banner') {
-        // បើជា Banner គឺបញ្ចូលទៅ Table ភ្លាមតែម្តង
         await supabase.from('banners').insert([{ image: data.publicUrl }]);
         fetchAllData();
     }
     isUploading.value = false;
 };
 
-// 🔥 មុខងារគ្រប់គ្រងការកុម្ម៉ង់ (រក្សានៅដដែល)
+// 🔥 មុខងារគ្រប់គ្រងការកុម្ម៉ង់
 const updateOrderStatus = async (id, newStatus) => {
     const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', id);
     if (!error) fetchAllData();
 };
 
-// 🍔 មុខងារបន្ថែមម្ហូបថ្មី (រក្សានៅដដែល)
+// 🍔 មុខងារបន្ថែមម្ហូបថ្មី
 const addProduct = async () => {
     if (!newProduct.value.image) return alert("សូមរង់ចាំ Upload រូបភាពឱ្យចប់សិន!");
     isAdding.value = true;
@@ -94,7 +87,7 @@ const addProduct = async () => {
     isAdding.value = false;
 };
 
-// 🗑️ មុខងារលុបម្ហូប (រក្សានៅដដែល)
+// 🗑️ មុខងារលុបម្ហូប
 const deleteProduct = async (id) => {
     if (confirm("តើបងពិតជាចង់លុបមុខម្ហូបនេះមែនទេ?")) {
         const { error } = await supabase.from('products').delete().eq('id', id);
@@ -135,10 +128,10 @@ const totalSales = computed(() => {
       <div class="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-200 overflow-x-auto max-w-full">
         <button @click="fetchAllData" :class="loading ? 'animate-spin' : ''" class="p-2 text-slate-500">🔄</button>
         <nav class="flex gap-2">
-          <button @click="activeTab = 'orders'" :class="activeTab === 'orders' ? 'bg-orange-500 text-white' : 'text-slate-500'" class="px-6 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all">🔔 ការកុម្ម៉ង់ ({{ orders.length }})</button>
-          <button @click="activeTab = 'products'" :class="activeTab === 'products' ? 'bg-orange-500 text-white' : 'text-slate-500'" class="px-6 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all">🍔 មុខម្ហូប</button>
-          <button @click="activeTab = 'add_product'" :class="activeTab === 'add_product' ? 'bg-green-500 text-white' : 'text-slate-500'" class="px-6 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all">➕ បន្ថែមម្ហូប</button>
-          <button @click="activeTab = 'banners'" :class="activeTab === 'banners' ? 'bg-indigo-500 text-white' : 'text-slate-500'" class="px-6 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all">🖼️ Banner</button>
+          <button @click="activeTab = 'orders'" :class="activeTab === 'orders' ? 'bg-orange-500 text-white shadow-orange-200' : 'text-slate-500 hover:bg-slate-50'" class="px-6 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all shadow-lg">🔔 ការកុម្ម៉ង់ ({{ orders.length }})</button>
+          <button @click="activeTab = 'products'" :class="activeTab === 'products' ? 'bg-orange-500 text-white shadow-orange-200' : 'text-slate-500 hover:bg-slate-50'" class="px-6 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all">🍔 មុខម្ហូប</button>
+          <button @click="activeTab = 'add_product'" :class="activeTab === 'add_product' ? 'bg-green-500 text-white shadow-green-200' : 'text-slate-500 hover:bg-slate-50'" class="px-6 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all">➕ បន្ថែមម្ហូប</button>
+          <button @click="activeTab = 'banners'" :class="activeTab === 'banners' ? 'bg-indigo-500 text-white shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50'" class="px-6 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all">🖼️ Banner</button>
         </nav>
       </div>
     </div>
@@ -158,22 +151,28 @@ const totalSales = computed(() => {
         </div>
     </div>
 
-    <div v-if="activeTab === 'orders'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      <div v-for="order in orders" :key="order.id" class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-        <div class="p-6 flex justify-between bg-slate-50/50 border-b">
-          <span class="font-black text-slate-800">#{{ order.id }}</span>
-          <span :class="getStatusColor(order.status)" class="px-4 py-1 rounded-full text-[10px] font-black uppercase">{{ order.status }}</span>
-        </div>
-        <div class="p-8">
-          <h4 class="font-bold text-lg">{{ order.customer_name }}</h4>
-          <p class="text-sm text-slate-400">📞 {{ order.phone }}</p>
-          <div class="mt-6 pt-6 border-t border-dashed flex justify-between items-center">
-            <span class="text-2xl font-black text-orange-500">${{ order.total_price }}</span>
+    <div v-if="activeTab === 'orders'" class="space-y-6">
+      <div v-for="order in orders" :key="order.id" class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-all">
+        <div class="flex flex-col md:flex-row">
+          <div class="p-8 border-b md:border-b-0 md:border-r border-slate-100 flex-1 bg-slate-50/30">
+            <div class="flex justify-between items-center mb-4">
+              <span class="text-xl font-black text-slate-800">#{{ order.id }}</span>
+              <span :class="getStatusColor(order.status)" class="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">{{ order.status }}</span>
+            </div>
+            <h4 class="font-bold text-slate-800 text-lg">{{ order.customer_name }}</h4>
+            <p class="text-sm text-slate-400 font-medium mt-1">📞 {{ order.phone }}</p>
           </div>
-        </div>
-        <div class="p-6 pt-0 flex gap-2">
-          <button v-if="order.status === 'pending'" @click="updateOrderStatus(order.id, 'delivering')" class="w-full py-3 bg-orange-500 text-white rounded-2xl font-bold text-xs">👨‍🍳 Cooking</button>
-          <button v-if="order.status === 'delivering'" @click="updateOrderStatus(order.id, 'completed')" class="w-full py-3 bg-green-500 text-white rounded-2xl font-bold text-xs">✅ Done</button>
+
+          <div class="p-8 flex-1 flex flex-col justify-center items-center">
+            <p class="text-xs font-black text-slate-400 uppercase mb-1">សរុបទឹកប្រាក់</p>
+            <span class="text-3xl font-black text-orange-500">${{ order.total_price }}</span>
+          </div>
+
+          <div class="p-8 flex-1 flex flex-col justify-center gap-2 bg-white">
+            <button v-if="order.status === 'pending'" @click="updateOrderStatus(order.id, 'delivering')" class="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold text-xs shadow-lg shadow-orange-100 hover:scale-[1.02] transition-all">👨‍🍳 ចាប់ផ្តើមធ្វើ (Cooking)</button>
+            <button v-if="order.status === 'delivering'" @click="updateOrderStatus(order.id, 'completed')" class="w-full py-4 bg-green-500 text-white rounded-2xl font-bold text-xs shadow-lg shadow-green-100 hover:scale-[1.02] transition-all">✅ រួចរាល់ (Done)</button>
+            <div v-if="order.status === 'completed'" class="w-full py-4 bg-slate-100 text-slate-400 rounded-2xl font-bold text-xs text-center">✨ បានបញ្ចប់រួចរាល់</div>
+          </div>
         </div>
       </div>
     </div>
@@ -182,29 +181,33 @@ const totalSales = computed(() => {
         <h2 class="text-2xl font-black text-slate-800 mb-8">បញ្ចូលមុខម្ហូបថ្មី</h2>
         <div class="space-y-6">
             <div>
-                <label class="block text-sm font-bold text-slate-500 mb-2">ឈ្មោះម្ហូប</label>
+                <label class="block text-sm font-bold text-slate-500 mb-2 ml-2">ឈ្មោះម្ហូប</label>
                 <input v-model="newProduct.title" type="text" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500" placeholder="ឧទាហរណ៍៖ បាយឆា">
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-bold text-slate-500 mb-2">តម្លៃ ($)</label>
+                    <label class="block text-sm font-bold text-slate-500 mb-2 ml-2">តម្លៃ ($)</label>
                     <input v-model="newProduct.price" type="number" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500" placeholder="0.00">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-slate-500 mb-2">ប្រភេទ</label>
-                    <select v-model="newProduct.category" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500">
-                        <option value="food">ម្ហូបអាហារ</option>
-                        <option value="drink">ភេសជ្ជៈ</option>
+                    <label class="block text-sm font-bold text-slate-500 mb-2 ml-2">ប្រភេទម្ហូប</label>
+                    <select v-model="newProduct.category" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500 font-bold text-slate-600">
+                        <option value="breakfast">☕ អាហារពេលព្រឹក</option>
+                        <option value="lunch">🍚 អាហារពេលថ្ងៃ</option>
+                        <option value="dinner">🍛 អាហារពេលល្ងាច</option>
+                        <option value="drink">🥤 ភេសជ្ជៈ</option>
+                        <option value="snack">🍟 អាហារសម្រន់</option>
+                        <option value="dessert">🍰 បង្អែម</option>
                     </select>
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-bold text-slate-500 mb-2">រូបភាពម្ហូប (ជ្រើសរើសពី Computer)</label>
+                <label class="block text-sm font-bold text-slate-500 mb-2 ml-2">រូបភាពម្ហូប (ជ្រើសរើសពី Computer)</label>
                 <input type="file" @change="e => handleFileUpload(e, 'product')" accept="image/*" class="w-full p-4 bg-slate-50 rounded-2xl border-dashed border-2 border-slate-200">
                 <p v-if="isUploading" class="text-xs text-orange-500 mt-2 italic">กำลัง Upload រូបភាព...</p>
                 <img v-if="newProduct.image" :src="newProduct.image" class="mt-4 w-32 h-32 object-cover rounded-2xl shadow-md border border-white">
             </div>
-            <button @click="addProduct" :disabled="isAdding || isUploading" class="w-full py-5 bg-orange-500 text-white rounded-3xl font-black shadow-xl shadow-orange-200">
+            <button @click="addProduct" :disabled="isAdding || isUploading" class="w-full py-5 bg-orange-500 text-white rounded-3xl font-black shadow-xl shadow-orange-200 hover:scale-[1.02] transition-all">
                 {{ isAdding ? 'កំពុងបញ្ចូល...' : 'យល់ព្រមបន្ថែមម្ហូប' }}
             </button>
         </div>
@@ -218,7 +221,6 @@ const totalSales = computed(() => {
                 {{ isUploading ? 'កំពុង Upload...' : '📁 ជ្រើសរើសរូបភាព Banner' }}
             </label>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div v-for="b in banners" :key="b.id" class="relative group rounded-3xl overflow-hidden shadow-sm border border-slate-100">
                 <img :src="b.image" class="w-full h-48 object-cover">
