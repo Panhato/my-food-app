@@ -1,40 +1,15 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { supabase } from '../supabase'; 
-import { useAuthStore } from '../stores/auth'; // 🔥 Import Store ដើម្បីឆែកលេខកូដ
+import { useAuthStore } from '../stores/auth'; 
+import { useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
+const router = useRouter();
 
-// ==========================================
-// 🔐 ផ្នែកគ្រប់គ្រងសោរ (ADMIN SECURITY)
-// ==========================================
-// ប្តូរពី 'Admin123@@##' មកជា '' (ទទេ) ដើម្បីឱ្យបងវាយបញ្ចូលថ្មីបាន
-const inputPassword = ref(''); 
-const isUnlocked = ref(false); 
-
-const unlockAdmin = () => {
-    // ហៅមុខងារ verifyAdminPassword ពី Store មកឆែកជាមួយ "1234Admin##$$"
-    if (authStore.verifyAdminPassword(inputPassword.value)) {
-        isUnlocked.value = true; 
-        
-        // ចាប់ផ្តើមទាញទិន្នន័យពេលដោះសោរបានជោគជ័យ
-        fetchOrders();
-        fetchProducts();
-        fetchBanners();
-        fetchChefs();
-        fetchUsers();
-    } else {
-        alert("លេខសម្ងាត់មិនត្រឹមត្រូវ! សូមព្យាយាមម្តងទៀត។");
-        inputPassword.value = '';
-    }
-};
-// ==========================================
-
-// --- State ផ្សេងៗ ---
+// --- State គ្រប់គ្រងទិន្នន័យ ---
 const activeTab = ref('orders'); 
-const isSubmitting = ref(false);
-const orderFilter = ref('all'); 
-const searchQuery = ref('');
+const loading = ref(false);
 
 const products = ref([]);
 const banners = ref([]);
@@ -42,12 +17,30 @@ const chefs = ref([]);
 const orders = ref([]); 
 const users = ref([]); 
 
-// Notification Helper
-const showNotification = (msg, type = 'success') => {
-    alert(`${type === 'success' ? '✅' : '❌'} ${msg}`);
+onMounted(async () => {
+    // 🛡️ ឆែកសិទ្ធិ៖ បើមិនមែនជា Admin ទេ គឺរុញទៅទំព័រដើមវិញ
+    if (!authStore.isAdmin()) {
+        router.push('/');
+        return;
+    }
+    
+    // បើជា Admin ពិតប្រាកដ គឺទាញទិន្នន័យមកបង្ហាញភ្លាម
+    fetchAllData();
+});
+
+const fetchAllData = async () => {
+    loading.value = true;
+    await Promise.all([
+        fetchOrders(),
+        fetchProducts(),
+        fetchBanners(),
+        fetchChefs(),
+        fetchUsers()
+    ]);
+    loading.value = false;
 };
 
-// --- Logic ទាញទិន្នន័យ (ហៅប្រើក្នុង unlockAdmin) ---
+// --- Logic ទាញទិន្នន័យ ---
 const fetchUsers = async () => {
   try {
       const { data, error } = await supabase.from('app_users').select('*');
@@ -76,41 +69,40 @@ const fetchChefs = async () => {
 };
 
 // ... (មុខងារ Update, Delete, Submit ផ្សេងៗរបស់បងទុកនៅដដែល) ...
-
 </script>
 
 <template>
   <div class="max-w-7xl mx-auto p-4 md:p-8 font-sans bg-gray-50/50 min-h-screen">
     
-    <div v-if="!isUnlocked" class="flex flex-col items-center justify-center min-h-[80vh]">
-         <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md text-center border border-gray-200">
-            <div class="text-6xl mb-4">🔒</div>
-            <h2 class="text-2xl font-black text-slate-800 mb-2">Admin Security</h2>
-            <p class="mb-6 text-gray-500 text-sm">សូមវាយបញ្ចូលលេខកូដដើម្បីចូលគ្រប់គ្រង</p>
-            
-            <input
-              v-model="inputPassword"
-              type="password"
-              placeholder="វាយលេខកូដសម្ងាត់..."
-              class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl mb-4 font-bold text-center text-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              @keyup.enter="unlockAdmin"
-            />
-            
-            <button @click="unlockAdmin" class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-slate-800 transition-all shadow-lg">
-               ដោះសោរ (Unlock)
-            </button>
-         </div>
-    </div>
-
-    <div v-else>
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-black text-slate-800">Admin Dashboard</h1>
-            <button @click="isUnlocked = false" class="text-red-500 font-bold bg-white px-4 py-2 rounded-lg border hover:bg-red-50">🔒 ចាកចេញ</button>
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight">Admin Dashboard</h1>
+            <p class="text-slate-500 text-sm mt-1">គ្រប់គ្រងទិន្នន័យហាងតាមរយៈ Gmail Admin</p>
         </div>
         
-        <div class="bg-white p-10 rounded-3xl border border-dashed border-gray-300 text-center">
-            <p class="text-gray-500">សូមស្វាគមន៍មកកាន់ប្រព័ន្ធគ្រប់គ្រង!</p>
+        <div class="flex items-center gap-3">
+            <button @click="fetchAllData" :class="loading ? 'animate-spin text-orange-500' : 'text-slate-400'" class="p-2">🔄</button>
+            <button @click="authStore.logout()" class="text-red-500 font-bold bg-white px-4 py-2 rounded-xl border border-red-100 hover:bg-red-50 transition-all shadow-sm">ចាកចេញ</button>
         </div>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-slate-400 font-bold text-[10px] uppercase">ការកុម្ម៉ង់សរុប</p>
+            <h3 class="text-2xl font-black text-slate-800">{{ orders.length }}</h3>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-slate-400 font-bold text-[10px] uppercase">មុខម្ហូបសរុប</p>
+            <h3 class="text-2xl font-black text-orange-500">{{ products.length }}</h3>
+        </div>
+    </div>
+
+    <div class="bg-white p-10 rounded-[32px] border border-slate-100 shadow-sm text-center">
+        <div class="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">🏠</div>
+        <h2 class="text-xl font-black text-slate-800 mb-2">អំពី MyFood Delivery</h2>
+        <p class="text-slate-500 max-w-md mx-auto leading-relaxed">
+            សូមស្វាគមន៍មកកាន់ប្រព័ន្ធគ្រប់គ្រងហាងបាយ។ បងអាចគ្រប់គ្រងការកុម្ម៉ង់ មុខម្ហូប និង Banner ផ្សព្វផ្សាយបានយ៉ាងងាយស្រួលចេញពីទីនេះ។
+        </p>
     </div>
 
   </div>
