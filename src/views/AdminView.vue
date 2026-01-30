@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router';
 const authStore = useAuthStore();
 const router = useRouter();
 
-// --- State គ្រប់គ្រងទិន្នន័យ (រក្សានៅដដែល) ---
+// --- State គ្រប់គ្រងទិន្នន័យដើម (រក្សានៅដដែល) ---
 const activeTab = ref('orders'); 
 const orders = ref([]);
 const products = ref([]);
@@ -153,61 +153,82 @@ const totalSales = computed(() => {
 
     <div v-if="activeTab === 'orders'" class="space-y-6">
       <div v-for="order in orders" :key="order.id" class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-all">
-        <div class="flex flex-col md:flex-row">
-          <div class="p-8 border-b md:border-b-0 md:border-r border-slate-100 flex-1 bg-slate-50/30">
-            <div class="flex justify-between items-center mb-4">
+        <div class="flex flex-col">
+          <div class="p-6 bg-slate-50/50 border-b flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
               <span class="text-xl font-black text-slate-800">#{{ order.id }}</span>
-              <span :class="getStatusColor(order.status)" class="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">{{ order.status }}</span>
+              <div>
+                <h4 class="font-bold text-slate-800">{{ order.customer_name }}</h4>
+                <p class="text-xs text-slate-400 font-medium">📞 {{ order.phone }}</p>
+              </div>
             </div>
-            <h4 class="font-bold text-slate-800 text-lg">{{ order.customer_name }}</h4>
-            <p class="text-sm text-slate-400 font-medium mt-1">📞 {{ order.phone }}</p>
+            <div class="flex gap-2">
+                <span class="px-3 py-1 bg-green-100 text-green-600 rounded-lg text-[10px] font-black uppercase">Paid (បង់រួច)</span>
+                <span :class="getStatusColor(order.status)" class="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">{{ order.status }}</span>
+            </div>
           </div>
 
-          <div class="p-8 flex-1 flex flex-col justify-center items-center">
-            <p class="text-xs font-black text-slate-400 uppercase mb-1">សរុបទឹកប្រាក់</p>
-            <span class="text-3xl font-black text-orange-500">${{ order.total_price }}</span>
+          <div class="p-6 bg-white grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div v-for="item in order.items" :key="item.id" class="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                  <img :src="item.image" class="w-14 h-14 object-cover rounded-xl shadow-sm">
+                  <div class="overflow-hidden">
+                      <p class="font-bold text-slate-800 text-xs truncate">{{ item.title }}</p>
+                      <p class="text-xs text-orange-500 font-black">${{ item.price }} x {{ item.quantity || 1 }}</p>
+                  </div>
+              </div>
           </div>
 
-          <div class="p-8 flex-1 flex flex-col justify-center gap-2 bg-white">
-            <button v-if="order.status === 'pending'" @click="updateOrderStatus(order.id, 'delivering')" class="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold text-xs shadow-lg shadow-orange-100 hover:scale-[1.02] transition-all">👨‍🍳 ចាប់ផ្តើមធ្វើ (Cooking)</button>
-            <button v-if="order.status === 'delivering'" @click="updateOrderStatus(order.id, 'completed')" class="w-full py-4 bg-green-500 text-white rounded-2xl font-bold text-xs shadow-lg shadow-green-100 hover:scale-[1.02] transition-all">✅ រួចរាល់ (Done)</button>
-            <div v-if="order.status === 'completed'" class="w-full py-4 bg-slate-100 text-slate-400 rounded-2xl font-bold text-xs text-center">✨ បានបញ្ចប់រួចរាល់</div>
+          <div class="p-6 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+              <p class="text-[10px] font-black text-slate-400 uppercase mb-1">សរុបទឹកប្រាក់</p>
+              <span class="text-3xl font-black text-orange-500">${{ order.total_price }}</span>
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto">
+              <button v-if="order.status === 'pending'" @click="updateOrderStatus(order.id, 'delivering')" class="flex-1 sm:px-8 py-3 bg-orange-500 text-white rounded-2xl font-bold text-xs shadow-lg shadow-orange-100 hover:scale-[1.02] transition-all">👨‍🍳 ចាប់ផ្តើមធ្វើ</button>
+              <button v-if="order.status === 'delivering'" @click="updateOrderStatus(order.id, 'completed')" class="flex-1 sm:px-8 py-3 bg-green-500 text-white rounded-2xl font-bold text-xs shadow-lg shadow-green-100 hover:scale-[1.02] transition-all">✅ រួចរាល់</button>
+              <div v-if="order.status === 'completed'" class="w-full sm:w-60 py-3 bg-slate-100 text-slate-400 rounded-2xl font-bold text-xs text-center italic">✨ បញ្ចប់រួចរាល់</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <div v-if="activeTab === 'add_product'" class="max-w-2xl mx-auto bg-white p-10 rounded-[40px] shadow-sm border border-slate-100">
-        <h2 class="text-2xl font-black text-slate-800 mb-8">បញ្ចូលមុខម្ហូបថ្មី</h2>
+        <h2 class="text-2xl font-black text-slate-800 mb-8 text-center">បញ្ចូលមុខម្ហូបថ្មី</h2>
         <div class="space-y-6">
-            <div>
-                <label class="block text-sm font-bold text-slate-500 mb-2 ml-2">ឈ្មោះម្ហូប</label>
-                <input v-model="newProduct.title" type="text" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500" placeholder="ឧទាហរណ៍៖ បាយឆា">
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-bold text-slate-500 mb-2 ml-2">តម្លៃ ($)</label>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase ml-2">ឈ្មោះម្ហូប</label>
+                    <input v-model="newProduct.title" type="text" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500" placeholder="បាយឆា">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase ml-2">តម្លៃ ($)</label>
                     <input v-model="newProduct.price" type="number" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500" placeholder="0.00">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-500 mb-2 ml-2">ប្រភេទម្ហូប</label>
-                    <select v-model="newProduct.category" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500 font-bold text-slate-600">
-                        <option value="breakfast">☕ អាហារពេលព្រឹក</option>
-                        <option value="lunch">🍚 អាហារពេលថ្ងៃ</option>
-                        <option value="dinner">🍛 អាហារពេលល្ងាច</option>
-                        <option value="drink">🥤 ភេសជ្ជៈ</option>
-                        <option value="snack">🍟 អាហារសម្រន់</option>
-                        <option value="dessert">🍰 បង្អែម</option>
-                    </select>
+            </div>
+            <div class="space-y-2">
+                <label class="text-xs font-black text-slate-400 uppercase ml-2">ប្រភេទម្ហូប</label>
+                <select v-model="newProduct.category" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500 font-bold text-slate-600">
+                    <option value="breakfast">☕ អាហារពេលព្រឹក</option>
+                    <option value="lunch">🍚 អាហារពេលថ្ងៃ</option>
+                    <option value="dinner">🍛 អាហារពេលល្ងាច</option>
+                    <option value="drink">🥤 ភេសជ្ជៈ</option>
+                    <option value="snack">🍟 អាហារសម្រន់</option>
+                    <option value="dessert">🍰 បង្អែម</option>
+                </select>
+            </div>
+            <div class="space-y-2">
+                <label class="text-xs font-black text-slate-400 uppercase ml-2 text-center block">រូបភាពម្ហូប</label>
+                <div class="relative h-40 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-all overflow-hidden cursor-pointer">
+                    <input type="file" @change="e => handleFileUpload(e, 'product')" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
+                    <div v-if="!newProduct.image" class="text-center">
+                        <span class="text-2xl">📸</span>
+                        <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase">{{ isUploading ? 'Uploading...' : 'ជ្រើសរើសរូបភាព' }}</p>
+                    </div>
+                    <img v-else :src="newProduct.image" class="w-full h-full object-cover">
                 </div>
             </div>
-            <div>
-                <label class="block text-sm font-bold text-slate-500 mb-2 ml-2">រូបភាពម្ហូប (ជ្រើសរើសពី Computer)</label>
-                <input type="file" @change="e => handleFileUpload(e, 'product')" accept="image/*" class="w-full p-4 bg-slate-50 rounded-2xl border-dashed border-2 border-slate-200">
-                <p v-if="isUploading" class="text-xs text-orange-500 mt-2 italic">กำลัง Upload រូបភាព...</p>
-                <img v-if="newProduct.image" :src="newProduct.image" class="mt-4 w-32 h-32 object-cover rounded-2xl shadow-md border border-white">
-            </div>
-            <button @click="addProduct" :disabled="isAdding || isUploading" class="w-full py-5 bg-orange-500 text-white rounded-3xl font-black shadow-xl shadow-orange-200 hover:scale-[1.02] transition-all">
+            <button @click="addProduct" :disabled="isAdding || isUploading" class="w-full py-5 bg-orange-500 text-white rounded-3xl font-black shadow-xl shadow-orange-200 hover:scale-[1.01] transition-all">
                 {{ isAdding ? 'កំពុងបញ្ចូល...' : 'យល់ព្រមបន្ថែមម្ហូប' }}
             </button>
         </div>
