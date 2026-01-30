@@ -8,60 +8,55 @@ export const useAuthStore = defineStore('auth', () => {
   const router = useRouter();
 
   // ==========================================
-  // 🔥🔥🔥 កន្លែងកំណត់ ADMIN (SETTINGS) 🔥🔥🔥
+  // 🛡️ ការកំណត់សិទ្ធិ ADMIN (SETTINGS)
   // ==========================================
   
-  // 1. កំណត់លេខសម្ងាត់សម្រាប់ដោះសោរទំព័រ Admin
-  const ADMIN_CODE = "1234Admin"; 
-
-// 2. បញ្ជី Email ដែលមានសិទ្ធិចូលប្រើមុខងារ Admin
+  // បញ្ជី Email ដែលបងអនុញ្ញាតឱ្យក្លាយជា Admin
   const adminEmails = [
       'admin@gmail.com',
       'chanro7080@gmail.com',
       'mengpanha@gmail.com',
-      'jeeson833@gmail.com', // អ៊ីមែលចាស់របស់អ្នក
-      'jeeson83@gmail.com'   // 🔥 បន្ថែមអ៊ីមែលថ្មីពីក្នុងរូបភាពនៅទីនេះ
+      'jeeson833@gmail.com', 
+      'jeeson83@gmail.com'   
   ];
-  /**
-   * ផ្ទៀងផ្ទាត់លេខសម្ងាត់ Admin
-   */
-  const verifyAdminPassword = (input) => {
-      return input === ADMIN_CODE;
-  };
 
   /**
-   * ពិនិត្យថាអ្នកដែលកំពុង Login ជា Admin ឬអត់
+   * ពិនិត្យថាអ្នកដែលកំពុង Login ជា Admin ឬអត់ (ឆែកតាម Email ក្នុងបញ្ជីខាងលើ)
    */
   const isAdmin = () => {
       if (!user.value) return false;
-      return user.value?.user_metadata?.role === 'admin' || 
-             adminEmails.includes(user.value?.email);
+      // បើ Email គាត់មានក្នុងបញ្ជី adminEmails គឺគាត់ជា Admin
+      return adminEmails.includes(user.value?.email);
   };
   // ==========================================
 
-  // 🔥 0. Listener: តាមដានស្ថានភាព User
+  // 🔥 0. Listener: តាមដានស្ថានភាព User (Session Persistence)
   supabase.auth.onAuthStateChange((event, session) => {
-    if (session) user.value = session.user;
-    else user.value = null;
+    if (session) {
+      user.value = session.user;
+    } else {
+      user.value = null;
+    }
   });
 
-  // 🔥 1. Load User
+  // 🔥 1. Load User ពី Supabase ពេលបើកកម្មវិធី
   const loadUser = async () => {
     const { data } = await supabase.auth.getUser();
     if (data.user) user.value = data.user;
   };
 
-  // 🔥 2. Login
+  // 🔥 2. Login ដោយប្រើ Email និង Password ធម្មតា
   const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
     if (error) throw error;
+    user.value = data.user;
     return true;
   };
 
-  // 🔥 3. Register
+  // 🔥 3. Register សមាជិកថ្មី
   const register = async (email, password, username, phone) => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -71,7 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
     });
     if (error) throw error;
-    if (data.session) user.value = data.user;
+    if (data.user) user.value = data.user;
     return true;
   };
 
@@ -92,7 +87,7 @@ export const useAuthStore = defineStore('auth', () => {
     return true;
   };
 
-  // 🔥 6. Logout
+  // 🔥 6. Logout និងសម្អាត Session
   const logout = async () => {
     try {
       await supabase.auth.signOut();
@@ -116,7 +111,6 @@ export const useAuthStore = defineStore('auth', () => {
     updateProfile,
     resetPasswordEmail, 
     isAuthenticated, 
-    isAdmin,
-    verifyAdminPassword 
+    isAdmin // លុប verifyAdminPassword ចោលព្រោះលែងប្រើលេខកូដសោរ
   };
 });
